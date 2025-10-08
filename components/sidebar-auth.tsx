@@ -43,6 +43,24 @@ export function SidebarAuth() {
   const [signupEmail, setSignupEmail] = useState("")
   const [signupPassword, setSignupPassword] = useState("")
 
+  // Clean up form when dialogs close
+  const handleLoginDialogChange = (open: boolean) => {
+    setLoginDialogOpen(open)
+    if (!open) {
+      setLoginEmail("")
+      setLoginPassword("")
+    }
+  }
+
+  const handleSignupDialogChange = (open: boolean) => {
+    setSignupDialogOpen(open)
+    if (!open) {
+      setSignupName("")
+      setSignupEmail("")
+      setSignupPassword("")
+    }
+  }
+
   // TODO: Replace with Supabase Auth
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,8 +71,6 @@ export function SidebarAuth() {
     setUser({ name: "John Doe", email: loginEmail })
     setIsAuthenticated(true)
     setLoginDialogOpen(false)
-    setLoginEmail("")
-    setLoginPassword("")
   }
 
   // TODO: Replace with Supabase Auth
@@ -67,9 +83,6 @@ export function SidebarAuth() {
     setUser({ name: signupName, email: signupEmail })
     setIsAuthenticated(true)
     setSignupDialogOpen(false)
-    setSignupName("")
-    setSignupEmail("")
-    setSignupPassword("")
   }
 
   // TODO: Replace with Supabase Auth
@@ -95,7 +108,7 @@ export function SidebarAuth() {
   if (isAuthenticated && user) {
     // Authenticated user view
     return (
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton
             size="lg"
@@ -172,7 +185,7 @@ export function SidebarAuth() {
   // Unauthenticated user view
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton
             size="lg"
@@ -207,7 +220,7 @@ export function SidebarAuth() {
       </DropdownMenu>
 
       {/* Login Dialog */}
-      <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
+      <Dialog open={loginDialogOpen} onOpenChange={handleLoginDialogChange}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Log in to your account</DialogTitle>
@@ -313,7 +326,7 @@ export function SidebarAuth() {
       </Dialog>
 
       {/* Signup Dialog */}
-      <Dialog open={signupDialogOpen} onOpenChange={setSignupDialogOpen}>
+      <Dialog open={signupDialogOpen} onOpenChange={handleSignupDialogChange}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Create an account</DialogTitle>
