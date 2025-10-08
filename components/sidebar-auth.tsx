@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -24,11 +24,14 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { LogOut, User, Settings, CreditCard, Bell, Sparkles } from "lucide-react"
 import { SidebarMenuButton } from "@/components/ui/sidebar"
+import { useAuth } from "@/lib/auth-context"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
 export function SidebarAuth() {
-  // Authentication state - will be replaced with Supabase auth
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null)
+  const { user, loading } = useAuth()
+  const supabase = createClient()
+  const router = useRouter()
 
   // Dialog states
   const [loginDialogOpen, setLoginDialogOpen] = useState(false)
@@ -37,11 +40,15 @@ export function SidebarAuth() {
   // Form states for login
   const [loginEmail, setLoginEmail] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
+  const [loginError, setLoginError] = useState("")
+  const [loginLoading, setLoginLoading] = useState(false)
 
   // Form states for signup
   const [signupName, setSignupName] = useState("")
   const [signupEmail, setSignupEmail] = useState("")
   const [signupPassword, setSignupPassword] = useState("")
+  const [signupError, setSignupError] = useState("")
+  const [signupLoading, setSignupLoading] = useState(false)
 
   // Clean up form when dialogs close
   const handleLoginDialogChange = (open: boolean) => {
@@ -49,6 +56,7 @@ export function SidebarAuth() {
     if (!open) {
       setLoginEmail("")
       setLoginPassword("")
+      setLoginError("")
     }
   }
 
@@ -58,54 +66,140 @@ export function SidebarAuth() {
       setSignupName("")
       setSignupEmail("")
       setSignupPassword("")
+      setSignupError("")
     }
   }
 
-  // TODO: Replace with Supabase Auth
+  // Supabase Auth: Login with email/password
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Login with:", { loginEmail, loginPassword })
-    // TODO: Implement Supabase auth.signInWithPassword()
-    
-    // Mock login for now
-    setUser({ name: "John Doe", email: loginEmail })
-    setIsAuthenticated(true)
-    setLoginDialogOpen(false)
+    setLoginError("")
+    setLoginLoading(true)
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      })
+
+      if (error) throw error
+
+      setLoginDialogOpen(false)
+      router.refresh()
+    } catch (error: any) {
+      setLoginError(error.message || "Failed to login")
+    } finally {
+      setLoginLoading(false)
+    }
   }
 
-  // TODO: Replace with Supabase Auth
+  // Supabase Auth: Sign up with email/password
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Signup with:", { signupName, signupEmail, signupPassword })
-    // TODO: Implement Supabase auth.signUp()
-    
-    // Mock signup for now
-    setUser({ name: signupName, email: signupEmail })
-    setIsAuthenticated(true)
-    setSignupDialogOpen(false)
+    setSignupError("")
+    setSignupLoading(true)
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: signupEmail,
+        password: signupPassword,
+        options: {
+          data: {
+            full_name: signupName,
+          },
+        },
+      })
+
+      if (error) throw error
+
+      setSignupDialogOpen(false)
+      // Show success message - user needs to verify email
+      alert("Check your email to verify your account!")
+      router.refresh()
+    } catch (error: any) {
+      setSignupError(error.message || "Failed to sign up")
+    } finally {
+      setSignupLoading(false)
+    }
   }
 
-  // TODO: Replace with Supabase Auth
+  // Supabase Auth: Login with Google
   const handleGoogleLogin = async () => {
-    console.log("Login with Google")
-    // TODO: Implement Supabase auth.signInWithOAuth({ provider: 'google' })
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) throw error
+    } catch (error: any) {
+      console.error("Google login error:", error.message)
+      alert("Failed to login with Google")
+    }
   }
 
-  // TODO: Replace with Supabase Auth
+  // Supabase Auth: Login with GitHub
   const handleGithubLogin = async () => {
-    console.log("Login with GitHub")
-    // TODO: Implement Supabase auth.signInWithOAuth({ provider: 'github' })
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) throw error
+    } catch (error: any) {
+      console.error("GitHub login error:", error.message)
+      alert("Failed to login with GitHub")
+    }
   }
 
-  // TODO: Replace with Supabase Auth
+  // Supabase Auth: Logout
   const handleLogout = async () => {
-    console.log("Logout")
-    // TODO: Implement Supabase auth.signOut()
-    setIsAuthenticated(false)
-    setUser(null)
+    try {
+      await supabase.auth.signOut()
+      router.refresh()
+    } catch (error: any) {
+      console.error("Logout error:", error.message)
+    }
   }
 
-  if (isAuthenticated && user) {
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!user) return "Guest"
+    return user.user_metadata?.full_name || user.email?.split("@")[0] || "User"
+  }
+
+  // Get user initials
+  const getUserInitials = () => {
+    const name = getUserDisplayName()
+    return name
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  if (loading) {
+    return (
+      <SidebarMenuButton size="lg" disabled>
+        <Avatar className="h-8 w-8 rounded-lg">
+          <AvatarFallback className="rounded-lg">
+            <User className="h-4 w-4" />
+          </AvatarFallback>
+        </Avatar>
+        <div className="grid flex-1 text-left text-sm leading-tight">
+          <span className="truncate font-semibold">Loading...</span>
+        </div>
+      </SidebarMenuButton>
+    )
+  }
+
+  if (user) {
     // Authenticated user view
     return (
       <DropdownMenu modal={false}>
@@ -115,17 +209,13 @@ export function SidebarAuth() {
             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
           >
             <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage src="" alt={user.name} />
+              <AvatarImage src={user.user_metadata?.avatar_url || ""} alt={getUserDisplayName()} />
               <AvatarFallback className="rounded-lg">
-                {user.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()}
+                {getUserInitials()}
               </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">{user.name}</span>
+              <span className="truncate font-semibold">{getUserDisplayName()}</span>
               <span className="truncate text-xs">{user.email}</span>
             </div>
           </SidebarMenuButton>
@@ -139,17 +229,13 @@ export function SidebarAuth() {
           <DropdownMenuLabel className="p-0 font-normal">
             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src="" alt={user.name} />
+                <AvatarImage src={user.user_metadata?.avatar_url || ""} alt={getUserDisplayName()} />
                 <AvatarFallback className="rounded-lg">
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()}
+                  {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate font-semibold">{getUserDisplayName()}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
             </div>
@@ -230,6 +316,11 @@ export function SidebarAuth() {
           </DialogHeader>
           <form onSubmit={handleLogin}>
             <div className="grid gap-4 py-4">
+              {loginError && (
+                <div className="rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive">
+                  {loginError}
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
@@ -239,6 +330,7 @@ export function SidebarAuth() {
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   required
+                  disabled={loginLoading}
                 />
               </div>
               <div className="grid gap-2">
@@ -250,10 +342,11 @@ export function SidebarAuth() {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
+                  disabled={loginLoading}
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Log in
+              <Button type="submit" className="w-full" disabled={loginLoading}>
+                {loginLoading ? "Logging in..." : "Log in"}
               </Button>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -336,6 +429,11 @@ export function SidebarAuth() {
           </DialogHeader>
           <form onSubmit={handleSignup}>
             <div className="grid gap-4 py-4">
+              {signupError && (
+                <div className="rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive">
+                  {signupError}
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="signup-name">Name</Label>
                 <Input
@@ -345,6 +443,7 @@ export function SidebarAuth() {
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
                   required
+                  disabled={signupLoading}
                 />
               </div>
               <div className="grid gap-2">
@@ -356,6 +455,7 @@ export function SidebarAuth() {
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                   required
+                  disabled={signupLoading}
                 />
               </div>
               <div className="grid gap-2">
@@ -367,10 +467,12 @@ export function SidebarAuth() {
                   value={signupPassword}
                   onChange={(e) => setSignupPassword(e.target.value)}
                   required
+                  disabled={signupLoading}
+                  minLength={6}
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Sign up
+              <Button type="submit" className="w-full" disabled={signupLoading}>
+                {signupLoading ? "Creating account..." : "Sign up"}
               </Button>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

@@ -4,6 +4,7 @@ import "./globals.css";
 import "./milkdown.css";
 import { AppSidebarLayout } from "@/components/app-sidebar-layout";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/lib/auth-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +37,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AppSidebarLayout>{children}</AppSidebarLayout>
+          <AuthProvider>
+            <AppSidebarLayout>{children}</AppSidebarLayout>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
