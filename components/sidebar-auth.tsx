@@ -307,7 +307,7 @@ export function SidebarAuth() {
                 </Button>
               </div>
               <div className="text-center text-sm">
-                Already have an account?{" "}
+                Don't have an account?{" "}
                 <Button
                   type="button"
                   variant="link"
@@ -317,7 +317,7 @@ export function SidebarAuth() {
                     setSignupDialogOpen(true)
                   }}
                 >
-                  Log in
+                  Sign up
                 </Button>
               </div>
             </div>
