@@ -19,6 +19,9 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { SidebarAuth } from "@/components/sidebar-auth"
 import { createContext, useContext, useState } from "react"
+import { useSidePaneStore } from "@/lib/store/side-pane-store"
+import { SidePane } from "@/components/side-pane"
+import { MilkdownEditor } from "@/components/milkdown-editor"
 
 type HeaderContextType = {
   title: string
@@ -111,6 +114,15 @@ function AppSidebar() {
 
 export function AppSidebarLayout({ children }: { children: React.ReactNode }) {
   const [title, setTitle] = useState("")
+  const { 
+    lastEditedDraftTitle, 
+    lastEditedDraftId, 
+    open, 
+    editorContent, 
+    setEditorContent, 
+    isSaved, 
+    setIsSaved 
+  } = useSidePaneStore()
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -120,6 +132,11 @@ export function AppSidebarLayout({ children }: { children: React.ReactNode }) {
     } else {
       document.exitFullscreen()
     }
+  }
+
+  const truncateDraftName = (name: string, maxLength: number = 20) => {
+    if (name.length <= maxLength) return name
+    return name.slice(0, maxLength) + "..."
   }
 
   return (
@@ -137,6 +154,18 @@ export function AppSidebarLayout({ children }: { children: React.ReactNode }) {
               </div>
             )}
             <div className="flex items-center gap-2 shrink-0">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={open}
+                disabled={!lastEditedDraftTitle}
+                className="flex items-center gap-2"
+              >
+                <span className={`inline-block w-2 h-2 rounded-full ${lastEditedDraftTitle ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                <span className="text-xs">
+                  {lastEditedDraftTitle ? `Continue editing ${truncateDraftName(lastEditedDraftTitle)}` : 'No draft selected'}
+                </span>
+              </Button>
               <ThemeToggle />
               <Button variant="ghost" size="icon" onClick={handleFullscreen} aria-label="Fullscreen">
                 <Maximize className="h-5 w-5" />
@@ -145,6 +174,31 @@ export function AppSidebarLayout({ children }: { children: React.ReactNode }) {
           </header>
           {children}
         </main>
+        
+        {/* Global SidePane */}
+        <SidePane title={lastEditedDraftTitle || "Side Panel"}>
+          {lastEditedDraftId && (
+            <div className="flex items-center gap-2 mb-2">
+              {/* LED Save Status */}
+              <span
+                className={`inline-block w-3 h-3 rounded-full ${isSaved ? "bg-green-500" : "bg-yellow-400 animate-pulse"}`}
+                title={isSaved ? "Saved" : "Unsaved"}
+              />
+              <span className="text-xs text-muted-foreground">
+                {isSaved ? "Saved" : "Unsaved"}
+              </span>
+            </div>
+          )}
+          {lastEditedDraftId && (
+            <MilkdownEditor
+              defaultValue={editorContent}
+              onChange={(markdown) => {
+                setEditorContent(markdown)
+                setIsSaved(false)
+              }}
+            />
+          )}
+        </SidePane>
       </SidebarProvider>
     </HeaderContext.Provider>
   )

@@ -4,10 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { FileTextIcon, PlusIcon, ExclamationTriangleIcon, FileIcon, DotsHorizontalIcon, ChevronRightIcon } from "@radix-ui/react-icons"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSidePaneStore } from "@/lib/store/side-pane-store"
-import { SidePane } from "@/components/side-pane"
-import { MilkdownEditor } from "@/components/milkdown-editor"
 import {
   Dialog,
   DialogContent,
@@ -62,7 +60,7 @@ export default function DraftsPage() {
     {
       id: crypto.randomUUID(),
       title: "Lorem",
-      content: "",
+      content: "# Example draft\n\nThis is a sample markdown draft.",
       createdAt: new Date(),
       updatedAt: new Date(),
       tags: ["Crisis Note"],
@@ -72,16 +70,40 @@ export default function DraftsPage() {
   const [isNewDraftOpen, setIsNewDraftOpen] = useState(false)
   const [draftName, setDraftName] = useState("")
   const [selectedType, setSelectedType] = useState<string | null>(null)
-  const { open } = useSidePaneStore()
+  const { 
+    open, 
+    lastEditedDraftId, 
+    setLastEditedDraft, 
+    editorContent, 
+    setEditorContent, 
+    isSaved, 
+    setIsSaved 
+  } = useSidePaneStore()
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [draftToDelete, setDraftToDelete] = useState<Draft | null>(null)
   const [hoveredDraft, setHoveredDraft] = useState<string | null>(null)
+
+  // Auto-save effect
+  useEffect(() => {
+    if (!lastEditedDraftId || isSaved) return;
+    const timeout = setTimeout(() => {
+      setDrafts((prevDrafts) =>
+        prevDrafts.map((d) =>
+          d.id === lastEditedDraftId ? { ...d, content: editorContent, updatedAt: new Date() } : d
+        )
+      );
+      setIsSaved(true);
+    }, 1000); // 1s debounce
+    return () => clearTimeout(timeout);
+  }, [editorContent, lastEditedDraftId, isSaved, setIsSaved])
 
   const filteredDrafts = drafts.filter((draft) =>
     draft.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     draft.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
     draft.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   )
+
+  const selectedDraft = drafts.find(d => d.id === lastEditedDraftId)
 
   const handleCreateDraft = () => {
     if (!draftName.trim() || !selectedType) return
@@ -175,6 +197,12 @@ export default function DraftsPage() {
                 className="p-6 hover:shadow-lg transition-shadow cursor-pointer relative group"
                 onMouseEnter={() => setHoveredDraft(draft.id)}
                 onMouseLeave={() => setHoveredDraft(null)}
+                onClick={() => {
+                  setLastEditedDraft(draft.id, draft.title)
+                  setEditorContent(draft.content)
+                  setIsSaved(true)
+                  open()
+                }}
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
@@ -222,13 +250,6 @@ export default function DraftsPage() {
           </div>
         )}
       </div>
-      
-      <SidePane title="Side Panel">
-        <MilkdownEditor
-          defaultValue=""
-          onChange={(markdown) => console.log("Editor content:", markdown)}
-        />
-      </SidePane>
 
       <Dialog open={isNewDraftOpen} onOpenChange={setIsNewDraftOpen}>
         <DialogContent>

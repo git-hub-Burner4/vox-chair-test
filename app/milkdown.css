@@ -24,10 +24,9 @@
 }
 
 /* Placeholder */
-.milkdown .ProseMirror.ProseMirror-focused:empty::before,
-.milkdown .ProseMirror:empty::before {
-  content: "Start typing...";
-  @apply text-muted-foreground/50 text-sm pointer-events-none absolute;
+.milkdown .ProseMirror[data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  @apply text-muted-foreground/50 text-sm pointer-events-none;
 }
 
 /* Headings */
