@@ -303,7 +303,7 @@ export default function DraftsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{draftToDelete?.title}". This action cannot be undone.
+              This will permanently delete &quot;{draftToDelete?.title}&quot;. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

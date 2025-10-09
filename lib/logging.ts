@@ -24,7 +24,7 @@ export interface LogEntry {
   category: LogCategory
   title: string
   description: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 // Determine the category based on action type
@@ -80,12 +80,25 @@ export function getLogs(): LogEntry[] {
     const stored = localStorage.getItem(LOGS_STORAGE_KEY)
     if (!stored) return []
     
-    const logs = JSON.parse(stored)
+    const logsRaw = JSON.parse(stored) as unknown
     // Convert timestamp strings back to Date objects
-    return logs.map((log: any) => ({
-      ...log,
-      timestamp: new Date(log.timestamp),
-    }))
+    if (!Array.isArray(logsRaw)) return []
+    return (logsRaw as Array<Partial<LogEntry>>).map((log) => {
+      const rawTs = (log as Partial<LogEntry>).timestamp
+      let timestamp: Date
+      if (rawTs instanceof Date) {
+        timestamp = rawTs
+      } else if (typeof rawTs === "number" || typeof rawTs === "string") {
+        timestamp = new Date(rawTs)
+      } else {
+        timestamp = new Date()
+      }
+
+      return {
+        ...(log as LogEntry),
+        timestamp,
+      }
+    })
   } catch (error) {
     console.error("Error loading logs:", error)
     return []
@@ -106,7 +119,7 @@ export function addLog(
   actionType: LogActionType,
   title: string,
   description: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): void {
   const logs = getLogs()
   const category = getLogCategory(actionType)

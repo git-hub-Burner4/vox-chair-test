@@ -86,8 +86,9 @@ export function SidebarAuth() {
 
       setLoginDialogOpen(false)
       router.refresh()
-    } catch (error: any) {
-      setLoginError(error.message || "Failed to login")
+    } catch (error: unknown) {
+      const msg = (error as { message?: string })?.message ?? "Failed to login"
+      setLoginError(msg)
     } finally {
       setLoginLoading(false)
     }
@@ -116,8 +117,9 @@ export function SidebarAuth() {
       // Show success message - user needs to verify email
       alert("Check your email to verify your account!")
       router.refresh()
-    } catch (error: any) {
-      setSignupError(error.message || "Failed to sign up")
+    } catch (error: unknown) {
+      const msg = (error as { message?: string })?.message ?? "Failed to sign up"
+      setSignupError(msg)
     } finally {
       setSignupLoading(false)
     }
@@ -134,8 +136,9 @@ export function SidebarAuth() {
       })
 
       if (error) throw error
-    } catch (error: any) {
-      console.error("Google login error:", error.message)
+    } catch (error: unknown) {
+      const msg = (error as { message?: string })?.message ?? String(error)
+      console.error("Google login error:", msg)
       alert("Failed to login with Google")
     }
   }
@@ -151,8 +154,9 @@ export function SidebarAuth() {
       })
 
       if (error) throw error
-    } catch (error: any) {
-      console.error("GitHub login error:", error.message)
+    } catch (error: unknown) {
+      const msg = (error as { message?: string })?.message ?? String(error)
+      console.error("GitHub login error:", msg)
       alert("Failed to login with GitHub")
     }
   }
@@ -162,8 +166,9 @@ export function SidebarAuth() {
     try {
       await supabase.auth.signOut()
       router.refresh()
-    } catch (error: any) {
-      console.error("Logout error:", error.message)
+    } catch (error: unknown) {
+      const msg = (error as { message?: string })?.message ?? String(error)
+      console.error("Logout error:", msg)
     }
   }
 
@@ -400,7 +405,7 @@ export function SidebarAuth() {
                 </Button>
               </div>
               <div className="text-center text-sm">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Button
                   type="button"
                   variant="link"

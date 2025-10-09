@@ -13,6 +13,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import Link from "next/link"
 import { Home, Users, Settings, FileText, Maximize, FilePenLine, ScrollText } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
@@ -44,34 +45,34 @@ function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="/">
+                  <Link href="/" className="flex items-center">
                     <Home className="h-4 w-4" />
                     <span>Home</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="/speaker-list">
+                  <Link href="/speaker-list" className="flex items-center">
                     <Users className="h-4 w-4" />
-                    <span>Speaker's List</span>
-                  </a>
+                    <span>Speaker&apos;s List</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="/drafts">
+                  <Link href="/drafts" className="flex items-center">
                     <FilePenLine className="h-4 w-4" />
                     <span>Drafts</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="/logs">
+                  <Link href="/logs" className="flex items-center">
                     <ScrollText className="h-4 w-4" />
                     <span>Logs</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
