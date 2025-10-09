@@ -10,7 +10,6 @@ import { useEffect, useState } from "react"
 import {
   getLogs,
   clearLogs,
-  addLog,
   type LogEntry,
   type LogCategory,
   getCategoryColor,
