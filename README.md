@@ -2,6 +2,26 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### 1. Environment Setup
+
+⚠️ **IMPORTANT**: This project requires environment variables to be set up.
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. Fill in your Supabase credentials in `.env.local`
+   - See [ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md) for detailed instructions
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Run Development Server
+
 First, run the development server:
 
 ```bash
@@ -31,6 +51,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
+⚠️ **Before deploying**: Make sure to add your environment variables to Vercel!
+
+See [ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md#vercel-deployment-setup) for detailed deployment instructions.
+
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+**Required Steps:**
+1. Add environment variables in Vercel dashboard (Settings → Environment Variables)
+2. Add your Vercel URLs to Supabase OAuth redirect URLs
+3. Deploy
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
