@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,6 +18,12 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
 
   const [minutesInput, setMinutesInput] = useState(minutes.toString())
   const [secondsInput, setSecondsInput] = useState(seconds.toString().padStart(2, "0"))
+
+  // Sync state when value prop changes externally
+  useEffect(() => {
+    setMinutesInput(minutes.toString())
+    setSecondsInput(seconds.toString().padStart(2, "0"))
+  }, [value, minutes, seconds])
 
   const handleMinutesChange = (newMinutes: number) => {
     const validMinutes = Math.max(0, newMinutes)

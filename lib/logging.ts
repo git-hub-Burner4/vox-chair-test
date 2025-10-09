@@ -83,8 +83,8 @@ export function getLogs(): LogEntry[] {
     const logsRaw = JSON.parse(stored) as unknown
     // Convert timestamp strings back to Date objects
     if (!Array.isArray(logsRaw)) return []
-    return (logsRaw as Array<Partial<LogEntry>>).map((log) => {
-      const rawTs = (log as Partial<LogEntry>).timestamp
+    return (logsRaw as Array<Record<string, unknown>>).map((log) => {
+      const rawTs = log.timestamp
       let timestamp: Date
       if (rawTs instanceof Date) {
         timestamp = rawTs
@@ -95,9 +95,9 @@ export function getLogs(): LogEntry[] {
       }
 
       return {
-        ...(log as LogEntry),
+        ...log,
         timestamp,
-      }
+      } as LogEntry
     })
   } catch (error) {
     console.error("Error loading logs:", error)

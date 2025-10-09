@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -14,7 +14,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -22,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { LogOut, User, Settings, CreditCard, Bell, Sparkles } from "lucide-react"
+import { LogOut, User, CreditCard, Bell, Sparkles } from "lucide-react"
 import { SidebarMenuButton } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { createClient } from "@/lib/supabase/client"
@@ -86,8 +85,8 @@ export function SidebarAuth() {
 
       setLoginDialogOpen(false)
       router.refresh()
-    } catch (error: unknown) {
-      const msg = (error as { message?: string })?.message ?? "Failed to login"
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to login"
       setLoginError(msg)
     } finally {
       setLoginLoading(false)
@@ -117,8 +116,8 @@ export function SidebarAuth() {
       // Show success message - user needs to verify email
       alert("Check your email to verify your account!")
       router.refresh()
-    } catch (error: unknown) {
-      const msg = (error as { message?: string })?.message ?? "Failed to sign up"
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to sign up"
       setSignupError(msg)
     } finally {
       setSignupLoading(false)
@@ -136,8 +135,8 @@ export function SidebarAuth() {
       })
 
       if (error) throw error
-    } catch (error: unknown) {
-      const msg = (error as { message?: string })?.message ?? String(error)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
       console.error("Google login error:", msg)
       alert("Failed to login with Google")
     }
@@ -154,8 +153,8 @@ export function SidebarAuth() {
       })
 
       if (error) throw error
-    } catch (error: unknown) {
-      const msg = (error as { message?: string })?.message ?? String(error)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
       console.error("GitHub login error:", msg)
       alert("Failed to login with GitHub")
     }
@@ -166,8 +165,8 @@ export function SidebarAuth() {
     try {
       await supabase.auth.signOut()
       router.refresh()
-    } catch (error: unknown) {
-      const msg = (error as { message?: string })?.message ?? String(error)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
       console.error("Logout error:", msg)
     }
   }
