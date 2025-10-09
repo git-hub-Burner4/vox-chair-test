@@ -12,7 +12,7 @@ import { GearIcon, ReloadIcon, PlayIcon, MixerHorizontalIcon } from "@radix-ui/r
 import { X, Vote } from "lucide-react"
 import { useHeader } from "@/components/app-sidebar-layout"
 import SessionsWidget from "@/components/sessions-widget"
-import type { Motion, VotingData } from "@/types"
+import type { Motion, VotingData, Speaker } from "@/types"
 import { MotionForm } from "../motion/MotionForm"
 import { MotionList } from "../motion/MotionList"
 import {
@@ -720,6 +720,15 @@ function SetAgendaDialog({
   )
 }
 
+const logRollCallUpdate = (
+  name: string,
+  oldStatus: string,
+  newStatus: string
+) => {
+  // This is a placeholder for roll call logging
+  console.log(`${name} attendance updated from ${oldStatus} to ${newStatus}`);
+}
+
 export default function SessionPage() {
   const { setTitle } = useHeader()
   
@@ -941,19 +950,29 @@ export default function SessionPage() {
   return (
     <div className="min-h-dvh bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6">
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        {/* Session Info */}
+        <SessionsWidget 
+          onLoadAction={(session) => {
+            setTitle(session.title)
+            setAgenda(session.agenda || "")
+            setAllMembers((session.members || []).map(m => ({
+              ...m,
+              flagQuery: m.flagQuery || m.name
+            })))
+          }} 
+        />
+
+        <div className="grid gap-6 mt-6 lg:grid-cols-[2fr_1fr]">
           {/* Main Content */}
           <div>
-            <Card className="p-8 mb-6">
-              <div className="flex justify-end mb-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowMotionForm(true)}
-                >
-                  <Vote className="mr-2 h-4 w-4" />
-                  New Motion
-                </Button>
-              </div>
+            <div className="mb-4 flex justify-end">
+              <Button variant="outline" onClick={() => setShowMotionForm(true)}>
+                <Vote className="mr-2 h-4 w-4" />
+                New Motion
+              </Button>
+            </div>
+
+            <Card className="mb-6">
               <TimeDisplay currentTime={currentTime} totalTime={totalTime} isRunning={isRunning} />
               <TimerControls
                 onYield={() => setYieldDialogOpen(true)}
@@ -964,25 +983,123 @@ export default function SessionPage() {
               />
             </Card>
 
-            <Card className="mb-6">
-              <MotionList
-                motions={motions}
-                onVote={handleMotionVote}
-              />
-            </Card>
-            
-            <Dialog open={showMotionForm} onOpenChange={setShowMotionForm}>
-              <DialogContent className="sm:max-w-[425px]" hideClose>
-                <DialogHeader>
-                  <DialogTitle>New Motion</DialogTitle>
-                </DialogHeader>
+            {showMotionForm ? (
+              <Card className="mb-6">
                 <MotionForm
                   committeeId={committeeName}
                   onSubmit={handleMotionSubmit}
                   onCancel={() => setShowMotionForm(false)}
                 />
-              </DialogContent>
-            </Dialog>
+              </Card>
+            ) : (
+              <Card className="mb-6">
+                <MotionList motions={motions} onVote={handleMotionVote} />
+              </Card>
+            )}
+
+            <CurrentSpeaker
+              speaker={currentSpeaker}
+              onNext={handleNextSpeaker}
+              isYielded={isYielded}
+              originalSpeaker={originalSpeaker}
+              yieldedTime={yieldedTime}
+            />
+
+            <UpcomingSpeakers
+              speakers={isYielded ? originalQueue : speakerQueue}
+              onRemove={handleRemoveSpeaker}
+              onReorder={handleReorderSpeakers}
+            />
+          </div>
+          
+          {/* Sidebar */}
+          <div>
+            <AddSpeaker 
+              availableSpeakers={availableForSpeaking} 
+              onAdd={handleAddSpeaker} 
+            />
+          </div>
+        </div>
+
+        {/* Dialogs */}
+        <div>
+          <TimeSettingsDialog
+            open={timeDialogOpen}
+            onOpenChange={setTimeDialogOpen}
+            currentTime={totalTime}
+            onSave={handleSetTime}
+          />
+          <YieldDialog
+            open={yieldDialogOpen}
+            onOpenChange={setYieldDialogOpen}
+            availableSpeakers={availableForYield}
+            onYield={handleYield}
+          />
+          <RollCallDialog
+            open={rollCallDialogOpen}
+            onOpenChange={setRollCallDialogOpen}
+            members={allMembers}
+            onUpdateAttendance={handleUpdateAttendance}
+          />
+          <SetAgendaDialog
+            open={agendaDialogOpen}
+            onOpenChange={setAgendaDialogOpen}
+            currentAgenda={agenda}
+            onSave={setAgenda}
+          />
+        </div>
+      </div>
+    </div>
+  )
+    <div className="min-h-dvh bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        {/* Session Info */}
+        <SessionsWidget onLoadAction={(session) => {
+          const data = session
+          setTitle(data.title)
+          setAgenda(data.agenda || "")
+          setAllMembers(data.members || [])
+        }} />
+
+        <div className="grid gap-6 mt-6 lg:grid-cols-[2fr_1fr]">
+          {/* Main Content */}
+          <div>
+            <div className="mb-4 flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowMotionForm(true)}
+              >
+                <Vote className="mr-2 h-4 w-4" />
+                New Motion
+              </Button>
+            </div>
+            <Card className="mb-6">
+              <TimeDisplay currentTime={currentTime} totalTime={totalTime} isRunning={isRunning} />
+              <TimerControls
+                onYield={() => setYieldDialogOpen(true)}
+                onSettings={() => setTimeDialogOpen(true)}
+                onReset={handleReset}
+                onStart={handleStart}
+                isRunning={isRunning}
+              />
+            </Card>
+
+            {showMotionForm ? (
+              <Card className="mb-6">
+                <MotionForm
+                  committeeId={committeeName}
+                  onSubmit={handleMotionSubmit}
+                  onCancel={() => setShowMotionForm(false)}
+                />
+              </Card>
+            ) : (
+              <Card className="mb-6">
+                <MotionList
+                  motions={motions}
+                  onVote={handleMotionVote}
+                />
+              </Card>
+            )}
 
             <CurrentSpeaker 
               speaker={currentSpeaker} 
@@ -994,6 +1111,79 @@ export default function SessionPage() {
             <UpcomingSpeakers 
               speakers={isYielded ? originalQueue : speakerQueue} 
               onRemove={handleRemoveSpeaker}
+              onReorder={handleReorderSpeakers}
+            />
+          </div>
+          
+          {/* Sidebar */}
+          <div>
+            <AddSpeaker 
+              availableSpeakers={availableForSpeaking} 
+              onAdd={handleAddSpeaker} 
+            />
+          </div>
+        </div>
+
+        {/* Dialogs */}
+        <TimeSettingsDialog
+          open={timeDialogOpen}
+          onOpenChange={setTimeDialogOpen}
+          currentTime={totalTime}
+          onSave={handleSetTime}
+        />
+        <YieldDialog
+          open={yieldDialogOpen}
+          onOpenChange={setYieldDialogOpen}
+          availableSpeakers={availableForYield}
+          onYield={handleYield}
+        />
+        <RollCallDialog
+          open={rollCallDialogOpen}
+          onOpenChange={setRollCallDialogOpen}
+          members={allMembers}
+          onUpdateAttendance={handleUpdateAttendance}
+        />
+        <SetAgendaDialog
+          open={agendaDialogOpen}
+          onOpenChange={setAgendaDialogOpen}
+          currentAgenda={agenda}
+          onSave={setAgenda}
+        />
+      </div>
+    </div>
+  )
+}
+          </div>
+        </div>
+
+        {/* Dialogs */}
+        <TimeSettingsDialog
+          open={timeDialogOpen}
+          onOpenChange={setTimeDialogOpen}
+          currentTime={totalTime}
+          onSave={handleSetTime}
+        />
+        <YieldDialog
+          open={yieldDialogOpen}
+          onOpenChange={setYieldDialogOpen}
+          availableSpeakers={availableForYield}
+          onYield={handleYield}
+        />
+        <RollCallDialog
+          open={rollCallDialogOpen}
+          onOpenChange={setRollCallDialogOpen}
+          members={allMembers}
+          onUpdateAttendance={handleUpdateAttendance}
+        />
+        <SetAgendaDialog
+          open={agendaDialogOpen}
+          onOpenChange={setAgendaDialogOpen}
+          currentAgenda={agenda}
+          onSave={setAgenda}
+        />
+      </div>
+    </div>
+  );
               onReorder={handleReorderSpeakers}
             />
           </div>

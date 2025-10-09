@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { logMemberAdded, logMemberRemoved, logMemberRenamed, logSessionStart } from "@/lib/logging"
+import SessionsWidget from "@/components/sessions-widget"
 
 // Lazy load heavy components
 const SetupNewCommittee = dynamic(() => import("@/components/setup-committee").then(mod => ({ default: mod.SetupNewCommittee })), {
@@ -44,10 +45,21 @@ function LoadCommittee() {
 // ----- Right Column -----
 type Selected = { id: string; name: string; flagQuery: string }
 
+type SavedSession = {
+  id: string
+  title: string
+  abbrev?: string
+  agenda?: string
+  members?: Selected[]
+  createdAt: string
+}
+
 // ----- Page -----
 export default function Page() {
   const [title, setTitle] = useState("Editable Committee Name")
   const [selected, setSelected] = useState<Selected[]>([])
+  const [abbrev, setAbbrev] = useState("")
+  const [agenda, setAgenda] = useState("")
 
   function addCountry(c: Country) {
     setSelected((curr) => {
@@ -62,6 +74,14 @@ export default function Page() {
       if (curr.some((x) => x.id === id)) return curr
       return [...curr, { id, name, flagQuery: "custom member icon" }]
     })
+  }
+
+  function onCreateCommittee(n: { name: string; abbrev: string; agenda: string }) {
+    setTitle(n.name)
+    setAbbrev(n.abbrev)
+    setAgenda(n.agenda)
+    // Optionally log creation or persist
+    logSessionStart(`Committee prepared: ${n.name} (${n.abbrev})`, selected.length)
   }
 
   function remove(id: string) {
@@ -91,16 +111,45 @@ export default function Page() {
   const router = useRouter()
 
   function start() {
-    if (selected.length === 0) {
-      alert("Please add at least one member to start a session")
+    if (!agenda.trim()) {
+      alert("Please create a committee and enter an agenda before starting the session")
       return
     }
-    // Log session start
+
+    // Log session start (member count may be zero)
     logSessionStart(title, selected.length)
-    // Store session data in sessionStorage
-    sessionStorage.setItem("sessionData", JSON.stringify({ title, members: selected }))
+
+    // Create session object and push to sessions array in sessionStorage
+    const newSession = {
+      id: crypto.randomUUID(),
+      title,
+      abbrev,
+      agenda,
+      members: selected,
+      createdAt: new Date().toISOString(),
+    }
+
+    try {
+      const raw = sessionStorage.getItem("sessions")
+      const arr = raw ? JSON.parse(raw) : []
+      arr.push(newSession)
+      sessionStorage.setItem("sessions", JSON.stringify(arr))
+    } catch (e) {
+      console.error("Failed to persist session", e)
+    }
+
+    // Also set current sessionData for speaker-list
+    sessionStorage.setItem("sessionData", JSON.stringify(newSession))
     // Navigate to speaker-list page
     router.push("/speaker-list")
+  }
+
+  function handleLoadSession(session: SavedSession) {
+    // load session into current UI state
+    setTitle(session.title || "")
+    setAbbrev(session.abbrev || "")
+    setAgenda(session.agenda || "")
+    setSelected(session.members || [])
   }
 
   return (
@@ -109,7 +158,8 @@ export default function Page() {
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-6">
             <LoadCommittee />
-            <SetupNewCommittee onAddCountry={addCountry} onAddCustom={addCustom} />
+            <SetupNewCommittee onCreate={onCreateCommittee} />
+            <SessionsWidget onLoadAction={handleLoadSession} />
           </div>
 
           <EditableCommittee

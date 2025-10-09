@@ -1,0 +1,221 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { GearIcon, ReloadIcon, PlayIcon, MixerHorizontalIcon } from "@radix-ui/react-icons"
+import { X, Vote } from "lucide-react"
+import { useHeader } from "@/components/app-sidebar-layout"
+import SessionsWidget from "@/components/sessions-widget"
+import type { Motion } from "@/types"
+import { MotionForm } from "../motion/MotionForm"
+import { MotionList } from "../motion/MotionList"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import {
+  logSpeakerAdded,
+  logSpeakerRemoved,
+  logSpeakerReordered,
+  logSpeakerYield,
+  logTimingConfig,
+} from "@/lib/logging"
+
+// Component types and implementations...
+
+export default function SessionPage() {
+  const { setTitle } = useHeader()
+  
+  // Get initial data from sessionStorage
+  const [committeeName, setCommitteeName] = useState("Editable Committee Name")
+  const [allMembers, setAllMembers] = useState<Speaker[]>([])
+  
+  // Motion state
+  const [showMotionForm, setShowMotionForm] = useState(false)
+  const [motions, setMotions] = useState<Motion[]>([])
+  
+  // Session state
+  const [currentSpeaker, setCurrentSpeaker] = useState<Speaker | null>(null)
+  const [speakerQueue, setSpeakerQueue] = useState<Speaker[]>([])
+  const [currentTime, setCurrentTime] = useState(60)
+  const [totalTime, setTotalTime] = useState(60)
+  const [isRunning, setIsRunning] = useState(false)
+  
+  // Yield tracking
+  const [isYielded, setIsYielded] = useState(false)
+  const [originalSpeaker, setOriginalSpeaker] = useState<Speaker | null>(null)
+  const [originalQueue, setOriginalQueue] = useState<Speaker[]>([])
+  const [yieldedTime, setYieldedTime] = useState(0)
+  
+  // Dialog states
+  const [timeDialogOpen, setTimeDialogOpen] = useState(false)
+  const [yieldDialogOpen, setYieldDialogOpen] = useState(false)
+  const [agenda, setAgenda] = useState("No agenda set")
+
+  // Load session data and motions on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const sessionData = sessionStorage.getItem("sessionData")
+    if (!sessionData) return
+    
+    try {
+      const data = JSON.parse(sessionData)
+      setCommitteeName(data.title)
+      setTitle(data.title)
+      setAgenda(data.agenda || "")
+      setAllMembers(data.members || [])
+      
+      // Load saved motions for this session
+      const savedMotions = sessionStorage.getItem(`motions_${data.title}`)
+      if (savedMotions) {
+        setMotions(JSON.parse(savedMotions))
+      }
+    } catch (e) {
+      console.error("Failed to load session data", e)
+    }
+  }, [setTitle])
+
+  // Save motions when they change
+  useEffect(() => {
+    if (typeof window === "undefined" || !committeeName) return
+    sessionStorage.setItem(`motions_${committeeName}`, JSON.stringify(motions))
+  }, [motions, committeeName])
+
+  // Timer logic
+  useEffect(() => {
+    if (!isRunning || currentTime <= 0) return
+    
+    const interval = setInterval(() => {
+      setCurrentTime((prev) => {
+        if (prev <= 1) {
+          setIsRunning(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isRunning, currentTime])
+
+  // Motion handlers
+  function handleMotionSubmit(motion: Omit<Motion, "id" | "createdAt">) {
+    const newMotion: Motion = {
+      ...motion,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    }
+    setMotions(prev => [...prev, newMotion])
+    setShowMotionForm(false)
+  }
+
+  function handleMotionVote(motionId: string, votesFor: number, votesAgainst: number, abstentions: number) {
+    setMotions(prev => 
+      prev.map(m => 
+        m.id === motionId 
+          ? {
+              ...m,
+              status: votesFor > votesAgainst ? "Passed" : "Failed",
+              votesFor,
+              votesAgainst,
+              abstentions
+            }
+          : m
+      )
+    )
+  }
+
+  return (
+    <div className="min-h-dvh bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        {/* Session Info */}
+        <SessionsWidget onLoadAction={(session) => {
+          const data = session
+          setCommitteeName(data.title)
+          setTitle(data.title)
+          setAgenda(data.agenda || "")
+          setAllMembers(data.members || [])
+          
+          // Load motions for the selected session
+          const savedMotions = sessionStorage.getItem(`motions_${data.title}`)
+          if (savedMotions) {
+            setMotions(JSON.parse(savedMotions))
+          } else {
+            setMotions([])
+          }
+        }} />
+
+        <div className="grid gap-6 mt-6 lg:grid-cols-[2fr_1fr]">
+          {/* Main Content */}
+          <div>
+            <Card className="p-8 mb-6">
+              <div className="flex justify-end mb-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowMotionForm(true)}
+                >
+                  <Vote className="mr-2 h-4 w-4" />
+                  New Motion
+                </Button>
+              </div>
+              <TimeDisplay currentTime={currentTime} totalTime={totalTime} isRunning={isRunning} />
+              <TimerControls
+                onYield={() => setYieldDialogOpen(true)}
+                onSettings={() => setTimeDialogOpen(true)}
+                onReset={handleReset}
+                onStart={handleStart}
+                isRunning={isRunning}
+              />
+            </Card>
+
+            {showMotionForm ? (
+              <Card className="mb-6">
+                <MotionForm
+                  committeeId={committeeName}
+                  onSubmit={handleMotionSubmit}
+                  onCancel={() => setShowMotionForm(false)}
+                />
+              </Card>
+            ) : (
+              <Card className="mb-6">
+                <MotionList
+                  motions={motions}
+                  onVote={handleMotionVote}
+                />
+              </Card>
+            )}
+
+            <CurrentSpeaker 
+              speaker={currentSpeaker} 
+              onNext={handleNextSpeaker}
+              isYielded={isYielded}
+              originalSpeaker={originalSpeaker}
+              yieldedTime={yieldedTime}
+            />
+            <UpcomingSpeakers 
+              speakers={isYielded ? originalQueue : speakerQueue} 
+              onRemove={handleRemoveSpeaker}
+              onReorder={handleReorderSpeakers}
+            />
+          </div>
+          
+          {/* Right Sidebar */}
+          <div>
+            <AddSpeaker availableSpeakers={availableForSpeaking} onAdd={handleAddSpeaker} />
+          </div>
+        </div>
+      </div>
+
+      <TimeSettingsDialog
+        open={timeDialogOpen}
+        onOpenChange={setTimeDialogOpen}
+        currentTime={totalTime}
+        onSave={handleSetTime}
+      />
+
+      <YieldDialog
+        open={yieldDialogOpen}
+        onOpenChange={setYieldDialogOpen}
+        availableSpeakers={availableForYield}
+        onYield={handleYield}
+      />
+    </div>
+  )
+}

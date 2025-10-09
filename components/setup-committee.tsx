@@ -4,132 +4,124 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { PlusIcon } from "@radix-ui/react-icons"
-import { useMemo, useState } from "react"
+import { Textarea } from "@/components/ui/textarea"
+import { useEffect, useState } from "react"
 
-type Country = { id: string; name: string; flagQuery: string }
-
-const UN_COUNTRIES: Country[] = [
-  { id: "afg", name: "Afghanistan", flagQuery: "flag of Afghanistan" },
-  { id: "alb", name: "Albania", flagQuery: "flag of Albania" },
-  { id: "ago", name: "Angola", flagQuery: "flag of Angola" },
-  { id: "alg", name: "Algeria", flagQuery: "flag of Algeria" },
-  { id: "and", name: "Andorra", flagQuery: "flag of Andorra" },
-  { id: "atg", name: "Antigua and Barbuda", flagQuery: "flag of Antigua and Barbuda" },
-  { id: "arg", name: "Argentina", flagQuery: "flag of Argentina" },
-  { id: "arm", name: "Armenia", flagQuery: "flag of Armenia" },
-  { id: "aus", name: "Australia", flagQuery: "flag of Australia" },
-  { id: "aut", name: "Austria", flagQuery: "flag of Austria" },
-  { id: "aze", name: "Azerbaijan", flagQuery: "flag of Azerbaijan" },
-]
-
-function FlagAvatar({ query, alt }: { query: string; alt: string }) {
-  return (
-    <Avatar className="h-7 w-7">
-      <AvatarImage alt={alt} src={`/.jpg?height=28&width=28&query=${encodeURIComponent(query)}`} />
-      <AvatarFallback className="text-xs">UN</AvatarFallback>
-    </Avatar>
-  )
+type NewCommittee = {
+  name: string
+  abbrev: string
+  agenda: string
 }
 
-function CountryRow({
-  country,
-  onAdd,
-}: {
-  country: Country
-  onAdd: (c: Country) => void
-}) {
-  return (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <FlagAvatar query={country.flagQuery} alt={`${country.name} flag`} />
-        <span className="truncate">{country.name}</span>
-      </div>
-      <Button variant="ghost" size="icon" aria-label={`Add ${country.name}`} onClick={() => onAdd(country)}>
-        <PlusIcon />
-      </Button>
-    </div>
-  )
+const SUGGESTED_COMMITTEES: Array<{ name: string; exampleAbbrev?: string }> = [
+  { name: "General Assembly", exampleAbbrev: "GA" },
+  { name: "Security Council", exampleAbbrev: "SC" },
+  { name: "Human Rights Council", exampleAbbrev: "HRC" },
+  { name: "Economic and Social Council", exampleAbbrev: "ECOSOC" },
+  { name: "Disarmament and International Security Committee", exampleAbbrev: "DISEC" },
+  { name: "Historical Security Council", exampleAbbrev: "HSC" },
+]
+
+function generateAbbrev(name: string) {
+  const s = name.trim()
+  if (!s) return ""
+  // If multiple words, take initials
+  const words = s.split(/[^A-Za-z0-9]+/).filter(Boolean)
+  if (words.length === 1) {
+    return words[0].slice(0, 4).toUpperCase()
+  }
+  const initials = words.map((w) => w[0].toUpperCase()).join("")
+  return initials.slice(0, 6)
 }
 
 export function SetupNewCommittee({
-  onAddCountry,
-  onAddCustom,
+  onCreate,
 }: {
-  onAddCountry: (c: Country) => void
-  onAddCustom: (name: string) => void
+  onCreate: (n: NewCommittee) => void
 }) {
-  const [customName, setCustomName] = useState("")
+  const [name, setName] = useState("")
+  const [abbrev, setAbbrev] = useState("")
+  const [abbrevEdited, setAbbrevEdited] = useState(false)
+  const [agenda, setAgenda] = useState("")
 
-  const [q, setQ] = useState("")
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return UN_COUNTRIES
-    return UN_COUNTRIES.filter((c) => c.name.toLowerCase().includes(s))
-  }, [q])
+  useEffect(() => {
+    // Auto-generate abbreviation when name changes, but only if the user hasn't typed one manually
+    if (!abbrevEdited) {
+      setAbbrev(generateAbbrev(name))
+    }
+  }, [name, abbrevEdited])
+
+  function tryCreate() {
+    const n = name.trim()
+    const a = (abbrev || generateAbbrev(n)).trim()
+    const ag = agenda.trim()
+    if (!n) {
+      alert("Please enter a committee name")
+      return
+    }
+    if (!ag) {
+      alert("Please enter an agenda for the committee")
+      return
+    }
+
+    onCreate({ name: n, abbrev: a, agenda: ag })
+    // clear
+    setName("")
+    setAbbrev("")
+    setAgenda("")
+    setAbbrevEdited(false)
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-balance">Set Up New Committee</CardTitle>
+        <CardTitle className="text-balance">Create / Select Committee</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="custom-member-input" className="font-medium">Custom Members</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="custom-member-input"
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              placeholder="Enter custom member"
-              aria-label="Enter custom member"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  const name = customName.trim()
-                  if (!name) return
-                  onAddCustom(name)
-                  setCustomName("")
-                }
-              }}
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Add custom member"
-              onClick={() => {
-                const name = customName.trim()
-                if (!name) return
-                onAddCustom(name)
-                setCustomName("")
-              }}
-            >
-              <PlusIcon />
-            </Button>
-          </div>
+      <CardContent className="space-y-4">
+        <div className="space-y-1">
+          <Label htmlFor="committee-name" className="font-medium">Committee</Label>
+          <Input
+            list="committee-suggestions"
+            id="committee-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Select or type committee name"
+            aria-label="Committee name"
+          />
+          <datalist id="committee-suggestions">
+            {SUGGESTED_COMMITTEES.map((s) => (
+              <option key={s.name} value={s.name} />
+            ))}
+          </datalist>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="un-search-input" className="font-medium">UN Member States</Label>
+        <div className="space-y-1">
+          <Label htmlFor="committee-abbrev" className="font-medium">Abbreviation</Label>
           <Input
-            id="un-search-input"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search"
-            aria-label="Search UN member states"
+            id="committee-abbrev"
+            value={abbrev || generateAbbrev(name)}
+            onChange={(e) => {
+              setAbbrev(e.target.value)
+              setAbbrevEdited(true)
+            }}
+            placeholder="Auto-generated abbreviation"
+            aria-label="Committee abbreviation"
           />
+        </div>
 
-          <Separator />
+        <div className="space-y-1">
+          <Label htmlFor="committee-agenda" className="font-medium">Agenda (required)</Label>
+          <Textarea
+            id="committee-agenda"
+            value={agenda}
+            onChange={(e) => setAgenda(e.target.value)}
+            placeholder="Enter the agenda/topic for this committee"
+            aria-label="Committee agenda"
+          />
+        </div>
 
-          <ScrollArea className="h-[360px] pr-3">
-            <div className="divide-y">
-              {filtered.map((c) => (
-                <CountryRow key={c.id} country={c} onAdd={onAddCountry} />
-              ))}
-            </div>
-          </ScrollArea>
+        <div className="flex justify-end">
+          <Button onClick={tryCreate}>Create Committee</Button>
         </div>
       </CardContent>
     </Card>
