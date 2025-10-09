@@ -13,7 +13,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Home, Users, Settings, FileText, Maximize, FilePenLine } from "lucide-react"
+import { Home, Users, Settings, FileText, Maximize, FilePenLine, ScrollText } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { SidebarAuth } from "@/components/sidebar-auth"
@@ -63,6 +63,14 @@ function AppSidebar() {
                   <a href="/drafts">
                     <FilePenLine className="h-4 w-4" />
                     <span>Drafts</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="/logs">
+                    <ScrollText className="h-4 w-4" />
+                    <span>Logs</span>
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>

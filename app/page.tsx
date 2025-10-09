@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { logMemberAdded, logMemberRemoved, logMemberRenamed, logSessionStart } from "@/lib/logging"
 
 // Lazy load heavy components
 const SetupNewCommittee = dynamic(() => import("@/components/setup-committee").then(mod => ({ default: mod.SetupNewCommittee })), {
@@ -49,24 +50,38 @@ export default function Page() {
   const [selected, setSelected] = useState<Selected[]>([])
 
   function addCountry(c: Country) {
-    setSelected((curr) =>
-      curr.some((x) => x.id === c.id) ? curr : [...curr, { id: c.id, name: c.name, flagQuery: c.flagQuery }],
-    )
+    setSelected((curr) => {
+      if (curr.some((x) => x.id === c.id)) return curr
+      return [...curr, { id: c.id, name: c.name, flagQuery: c.flagQuery }]
+    })
   }
 
   function addCustom(name: string) {
     const id = `custom-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
-    setSelected((curr) =>
-      curr.some((x) => x.id === id) ? curr : [...curr, { id, name, flagQuery: "custom member icon" }],
-    )
+    setSelected((curr) => {
+      if (curr.some((x) => x.id === id)) return curr
+      return [...curr, { id, name, flagQuery: "custom member icon" }]
+    })
   }
 
   function remove(id: string) {
-    setSelected((curr) => curr.filter((x) => x.id !== id))
+    setSelected((curr) => {
+      const member = curr.find((x) => x.id === id)
+      if (member) {
+        logMemberRemoved(member.name)
+      }
+      return curr.filter((x) => x.id !== id)
+    })
   }
 
   function rename(id: string, name: string) {
-    setSelected((curr) => curr.map((x) => (x.id === id ? { ...x, name } : x)))
+    setSelected((curr) => {
+      const oldMember = curr.find((x) => x.id === id)
+      if (oldMember && oldMember.name !== name) {
+        logMemberRenamed(oldMember.name, name)
+      }
+      return curr.map((x) => (x.id === id ? { ...x, name } : x))
+    })
   }
 
   function clearAll() {
@@ -80,6 +95,8 @@ export default function Page() {
       alert("Please add at least one member to start a session")
       return
     }
+    // Log session start
+    logSessionStart(title, selected.length)
     // Store session data in sessionStorage
     sessionStorage.setItem("sessionData", JSON.stringify({ title, members: selected }))
     // Navigate to speaker-list page

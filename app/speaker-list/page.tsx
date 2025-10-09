@@ -11,6 +11,15 @@ import { useEffect, useState, Suspense } from "react"
 import { GearIcon, ReloadIcon, PlayIcon, MixerHorizontalIcon } from "@radix-ui/react-icons"
 import { X } from "lucide-react"
 import { useHeader } from "@/components/app-sidebar-layout"
+import {
+  logAgendaChange,
+  logRollCallUpdate,
+  logSpeakerAdded,
+  logSpeakerRemoved,
+  logSpeakerReordered,
+  logSpeakerYield,
+  logTimingConfig,
+} from "@/lib/logging"
 
 // Lazy load heavy components
 const ScrollArea = dynamic(() => import("@/components/ui/scroll-area").then(mod => ({ default: mod.ScrollArea })), {
@@ -523,9 +532,24 @@ function RollCallDialog({
   )
 
   const handleAttendance = (id: string, status: 'present' | 'present-voting' | 'absent') => {
-    setLocalMembers(localMembers.map(m => 
-      m.id === id ? { ...m, attendance: status } : m
-    ))
+    setLocalMembers(localMembers.map(m => {
+      if (m.id === id) {
+        const oldStatus = m.attendance || 'not set'
+        const statusLabels = {
+          'present': 'Present',
+          'present-voting': 'Present & Voting',
+          'absent': 'Absent',
+          'not set': 'Not Set'
+        }
+        logRollCallUpdate(
+          m.name,
+          statusLabels[oldStatus as keyof typeof statusLabels] || oldStatus,
+          statusLabels[status]
+        )
+        return { ...m, attendance: status }
+      }
+      return m
+    }))
   }
 
   const handleSetAllPresent = () => {
@@ -755,21 +779,31 @@ export default function SessionPage() {
   const handleAddSpeaker = (speaker: Speaker) => {
     if (!currentSpeaker) {
       setCurrentSpeaker(speaker)
+      logSpeakerAdded(speaker.name)
     } else if (!speakerQueue.find((s) => s.id === speaker.id)) {
       // Don't allow adding the current speaker unless they were yielded to
       if (speaker.id === currentSpeaker.id && !isYielded) {
         return
       }
       setSpeakerQueue([...speakerQueue, speaker])
+      logSpeakerAdded(speaker.name)
     }
   }
 
   const handleRemoveSpeaker = (id: string) => {
     if (isYielded) {
       // When yielded, remove from the original queue and keep it in sync
+      const speaker = originalQueue.find((s) => s.id === id)
+      if (speaker) {
+        logSpeakerRemoved(speaker.name)
+      }
       setOriginalQueue(originalQueue.filter((s) => s.id !== id))
     } else {
       // Normal flow: remove from speaker queue
+      const speaker = speakerQueue.find((s) => s.id === id)
+      if (speaker) {
+        logSpeakerRemoved(speaker.name)
+      }
       setSpeakerQueue(speakerQueue.filter((s) => s.id !== id))
     }
   }
@@ -802,11 +836,18 @@ export default function SessionPage() {
   }
 
   const handleYield = (speaker: Speaker) => {
+    // Format the time remaining
+    const mins = Math.floor(currentTime / 60)
+    const secs = currentTime % 60
+    const timeRemaining = `${mins}:${secs.toString().padStart(2, "0")}`
+    
     // Store the original speaker and queue state if not already yielded
     if (!isYielded && currentSpeaker) {
       setOriginalSpeaker(currentSpeaker)
       setOriginalQueue([...speakerQueue])
       setYieldedTime(currentTime) // Capture the remaining time at yield
+      // Log the yield action
+      logSpeakerYield(currentSpeaker.name, speaker.name, timeRemaining)
     }
     
     // Remove speaker from queue if they're there
@@ -823,6 +864,7 @@ export default function SessionPage() {
     const newTime = minutes * 60 + seconds
     setTotalTime(newTime)
     setCurrentTime(newTime)
+    logTimingConfig(minutes, seconds)
   }
 
   const handleReset = () => {
@@ -842,6 +884,7 @@ export default function SessionPage() {
       // Normal flow: update speaker queue
       setSpeakerQueue(newOrder)
     }
+    logSpeakerReordered()
   }
 
   const availableForYield = allMembers.filter(
@@ -951,7 +994,12 @@ export default function SessionPage() {
         open={agendaDialogOpen}
         onOpenChange={setAgendaDialogOpen}
         currentAgenda={agenda}
-        onSave={setAgenda}
+        onSave={(newAgenda) => {
+          if (newAgenda !== agenda) {
+            logAgendaChange(agenda, newAgenda)
+          }
+          setAgenda(newAgenda)
+        }}
       />
     </div>
   )

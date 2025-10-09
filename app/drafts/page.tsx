@@ -34,6 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { logDraftCreated, logDraftDeleted } from "@/lib/logging"
 
 type Draft = {
   id: string
@@ -101,6 +102,7 @@ export default function DraftsPage() {
     }
 
     setDrafts([...drafts, newDraft])
+    logDraftCreated(draftName, selectedType)
     setIsNewDraftOpen(false)
     setDraftName("")
     setSelectedType(null)
@@ -115,6 +117,8 @@ export default function DraftsPage() {
 
   const handleDeleteConfirm = () => {
     if (draftToDelete) {
+      const draftType = draftToDelete.tags[0] || "Draft"
+      logDraftDeleted(draftToDelete.title, draftType)
       setDrafts(drafts.filter(d => d.id !== draftToDelete.id))
       setDraftToDelete(null)
     }
