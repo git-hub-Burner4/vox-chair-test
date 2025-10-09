@@ -103,7 +103,8 @@ export default function DraftsPage() {
     draft.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  const selectedDraft = drafts.find(d => d.id === lastEditedDraftId)
+  // selectedDraft is used to find the current draft being edited
+  // const selectedDraft = drafts.find(d => d.id === lastEditedDraftId)
 
   const handleCreateDraft = () => {
     if (!draftName.trim() || !selectedType) return
