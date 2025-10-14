@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Motion, Speaker } from "@/types";
+import type { Motion } from "@/types/motion";
+import type { Speaker } from "@/types/shared/speaker";
 
 interface MotionDialogProps {
   motion: Motion;

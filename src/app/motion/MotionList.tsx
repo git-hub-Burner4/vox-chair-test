@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Motion, MotionStatus, ExtendedMotion, Speaker } from "@/types";
+import type { Motion, MotionStatus, ExtendedMotion } from "@/types/motion";
+import type { Speaker } from "@/types/shared/speaker";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

@@ -12,7 +12,7 @@ import {
 import { FlagAvatar } from "@/components/ui/flag-avatar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Speaker } from "@/types";
+import type { Speaker } from "@/types/shared/speaker";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 interface AddSpeakerProps {

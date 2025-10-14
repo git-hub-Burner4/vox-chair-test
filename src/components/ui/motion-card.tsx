@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Motion, ExtendedMotion } from "@/types"
+import type { Motion, ExtendedMotion } from "@/types/motion";
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

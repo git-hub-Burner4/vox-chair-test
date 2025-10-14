@@ -13,7 +13,7 @@ import { Vote, X } from "lucide-react"
 import { toast } from "sonner"
 import { useHeader } from "@/components/app-sidebar-layout"
 import { useCommittee } from "@/lib/committee-context"
-import type { Motion, ExtendedMotion, MotionStatus } from "@/types"
+import type { Motion, ExtendedMotion, MotionStatus } from "@/types/motion";
 import { MotionForm } from "../motion/MotionForm"
 import { MotionList } from "../motion/MotionList"
 import { ExtendMotionDialog } from "../motion/ExtendMotionDialog"

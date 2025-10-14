@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { DialogProps } from "@/types/shared/dialog"
-import { Motion } from "@/types"
+import type { Motion } from "@/types/motion";
 import { TimePicker } from "@/components/time-picker"
 
 export interface TimeSettingsDialogProps extends DialogProps {
