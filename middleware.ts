@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Refresh session if expired
-  if (!user && request.nextUrl.pathname.startsWith('/protected')) {
+  if (!user && request.nextUrl.pathname !== '/' && !request.nextUrl.pathname.startsWith('/_next')) {
     // Redirect to login if accessing protected routes
     const url = request.nextUrl.clone()
     url.pathname = '/'
