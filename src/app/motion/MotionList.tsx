@@ -15,12 +15,12 @@ interface MotionListProps {
   motions: Motion[];
   onVote: (motionId: string, votesFor: number, votesAgainst: number, abstentions: number) => void;
   onAdjournMotion: (motionId: string) => void;
-  onExtendMotion: (originalMotionId: string) => void;
+  onExtendMotion: (motion: Motion) => void;  // Changed from string to Motion
   onEditMotion: (motion: Motion) => void;
   onReorderMotions: (newOrder: Motion[]) => void;
   onStatusChange: (motionId: string, newStatus: "Pending" | "In Progress" | "Completed") => void;
-  allMembers: Speaker[];  // All available speakers
-  currentSpeaker?: Speaker | null;  // Currently speaking member
+  allMembers: Speaker[];
+  currentSpeaker?: Speaker | null;
 }
 
 const statusColors: Record<MotionStatus, string> = {
@@ -186,7 +186,7 @@ export const MotionList = ({
                         {motion.type !== "Adjournment" && motion.type !== "Extension" && (
                           <Button
                             size="sm"
-                            onClick={() => onExtendMotion(motion.id)}
+                            onClick={() => onExtendMotion(motion)}  // Pass full motion object
                             className="formal-btn"
                           >
                             Extend

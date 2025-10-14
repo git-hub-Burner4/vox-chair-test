@@ -95,13 +95,6 @@ export function MotionDialog({
             </Button>
           </div>
           <Button
-            onClick={() => handleVoteComplete('abstain')}
-            variant="outline"
-            className="w-full"
-          >
-            Abstain
-          </Button>
-          <Button
             onClick={onClose}
             variant="outline"
             className="w-full"

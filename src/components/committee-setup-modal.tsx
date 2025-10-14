@@ -24,7 +24,11 @@ import {
   Search,
   ChevronsUpDown
 } from "lucide-react"
-import { Command } from "@/components/ui/command"
+import { Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,  // <-- Add this
+  CommandItem, } from "@/components/ui/command"
 import Image from 'next/image'
 import { cn } from "@/lib/utils"
 
@@ -397,91 +401,68 @@ export default function CommitteeSetupModal({
 
                         {/* Country Search Dropdown */}
                         <div className="space-y-1.5">
-                          <Label htmlFor="country-search" className="text-sm">
-                            Search Countries
-                          </Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                className="w-full justify-between h-9"
-                              >
-                                Search for a country...
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0 max-h-[400px] overflow-hidden" align="start">
-                              <Command className="w-full">
-                                <div className="flex items-center border-b px-3">
-                                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                                  <input
-                                    className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="Search countries..."
-                                    value={portfolioSearchQuery}
-                                    onChange={(e) => setPortfolioSearchQuery(e.target.value)}
-                                  />
-                                </div>
-                                <div className="max-h-[300px] overflow-y-auto">
-                                  <div className="p-2">
-                                    {countryList
-                                      .filter(country => {
-                                        const searchTerm = portfolioSearchQuery.toLowerCase().trim();
-                                        return !searchTerm || 
-                                          country.name.toLowerCase().includes(searchTerm) ||
-                                          country.code.toLowerCase().includes(searchTerm);
-                                      })
-                                      .map(country => {
-                                        const isAdded = portfolios.some(p => p.id === country.code);
-                                        return (
-                                      <div
-                                        key={country.code}
-                                        id={`country-${country.code}`}
-                                        onClick={() => {
-                                          if (!isAdded) {
-                                            const portfolio = {
-                                              id: country.code.toLowerCase(),
-                                              code: country.code.toLowerCase(),
-                                              name: country.name,
-                                              attendance: 'present' as const
-                                            }
-                                            const el = document.getElementById(`country-${country.code}`);
-                                            if (el) {
-                                              el.classList.add('bg-green-500/20');
-                                              setTimeout(() => {
-                                                const newPortfolios = [...portfolios, portfolio];
-                                                setPortfolios(newPortfolios.sort((a, b) => a.name.localeCompare(b.name)));
-                                              }, 300);
-                                            }
-                                          }
-                                        }}
-                                        className={cn(
-                                          "flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-all duration-200",
-                                          isAdded ? 
-                                            "opacity-50 cursor-not-allowed bg-muted" : 
-                                            "cursor-pointer hover:bg-accent hover:text-accent-foreground"
-                                        )}
-                                      >
-                                        <Image
-                                          src={`https://flagcdn.com/w20/${country.code.toLowerCase()}.png`}
-                                          alt={`${country.name} flag`}
-                                          width={20}
-                                          height={15}
-                                          className="object-cover rounded-sm mr-2"
-                                        />
-                                        <span>{country.name}</span>
-                                        {isAdded && (
-                                          <span className="ml-auto text-xs text-muted-foreground">Added</span>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                  </div>
-                                </div>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
+  <Label htmlFor="country-search" className="text-sm">
+    Search Countries
+  </Label>
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button
+        variant="outline"
+        role="combobox"
+        className="w-full justify-between h-9"
+      >
+        Search for a country...
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <Command>
+        <CommandInput placeholder="Search countries..." />
+        <CommandEmpty>No country found.</CommandEmpty>
+        <CommandGroup className="max-h-[300px] overflow-auto">
+          {countryList.map(country => {
+            const isAdded = portfolios.some(p => p.id === country.code);
+            return (
+              <CommandItem
+                key={country.code}
+                value={country.name}
+                onSelect={() => {
+                  if (!isAdded) {
+                    const portfolio = {
+                      id: country.code.toLowerCase(),
+                      code: country.code.toLowerCase(),
+                      name: country.name,
+                      attendance: 'present' as const
+                    };
+                    const newPortfolios = [...portfolios, portfolio];
+                    setPortfolios(newPortfolios.sort((a, b) => a.name.localeCompare(b.name)));
+                  }
+                }}
+                disabled={isAdded}
+                className={cn(
+                  "flex items-center gap-2",
+                  isAdded && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <Image
+                  src={`https://flagcdn.com/w20/${country.code.toLowerCase()}.png`}
+                  alt={`${country.name} flag`}
+                  width={20}
+                  height={15}
+                  className="object-cover rounded-sm"
+                />
+                <span>{country.name}</span>
+                {isAdded && (
+                  <span className="ml-auto text-xs text-muted-foreground">Added</span>
+                )}
+              </CommandItem>
+            );
+          })}
+        </CommandGroup>
+      </Command>
+    </PopoverContent>
+  </Popover>
+</div>
                         <div className="flex items-center gap-2 mb-4">
                           <Button
                             variant="outline"

@@ -234,124 +234,6 @@ function CurrentSpeaker({
       </Card>
     </div>
   )
-
-  if (!speaker) {
-    return (
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Current Speaker</h2>
-        </div>
-        <Card className="p-6 text-center text-muted-foreground">
-          No speaker selected
-        </Card>
-      </div>
-    )
-  }
-
-  return (
-    <div className="mb-8">
-      <h2 className="text-xl font-semibold mb-4">Current Speaker</h2>
-      <Card className="p-4">
-        <div 
-          className="flex items-center justify-between"
-          draggable={true}
-          onDragStart={(e) => {
-            onDragStart?.(e, speaker);
-            // Get the card element for the drag preview
-            const cardElement = e.currentTarget.closest('.card');
-            if (cardElement) {
-              const rect = cardElement.getBoundingClientRect();
-              const handleOffsetFromRight = 50;
-              const cursorOffsetX = rect.width - handleOffsetFromRight;
-              const cursorOffsetY = rect.height / 2;
-
-              // Create drag preview
-              const dragPreview = document.createElement('div');
-              dragPreview.style.cssText = 'position: fixed; top: -9999px; left: -9999px; pointer-events: none;';
-              dragPreview.innerHTML = `
-                <div style="
-                  background: var(--background);
-                  border: 1px solid hsl(var(--border));
-                  border-radius: 8px;
-                  padding: 1.5rem;
-                  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
-                  width: ${rect.width}px;
-                ">
-                  <div style="display: flex; align-items: center; gap: 1rem;">
-                    <span style="font-size: 1.5rem; font-weight: 500; line-height: 2rem;">${speaker.name}</span>
-                  </div>
-                </div>
-              `;
-
-              document.body.appendChild(dragPreview);
-              const dragImage = dragPreview.firstElementChild as HTMLElement;
-              e.dataTransfer.setDragImage(dragImage, cursorOffsetX, cursorOffsetY);
-
-              setTimeout(() => document.body.removeChild(dragPreview), 0);
-            }
-          }}
-          onDragOver={(e) => onDragOver?.(e)}
-          onDrop={(e) => onDrop?.(e)}
-        >
-          <FlagAvatar query={speaker.flagQuery} alt={`${speaker.name} flag`} className="h-10 w-16" />
-          <div className="flex-1">
-            <div className="flex flex-col gap-1">
-              <span className="text-2xl font-medium">{speaker.name}</span>
-              <div className="flex flex-wrap gap-2 items-center">
-                {isYielded && originalSpeaker && (
-                  <Badge variant="secondary" className="text-xs">
-                    Yielded from {originalSpeaker.name} at {formatTime(yieldedTime)}
-                  </Badge>
-                )}
-                {speaker.yieldedTime && speaker.yieldedTime > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{Math.floor(speaker.yieldedTime / 60)}:{(speaker.yieldedTime % 60).toString().padStart(2, '0')} yielded time
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <FlagAvatar query={speaker.flagQuery} alt={`${speaker.name} flag`} className="h-10 w-16" />
-            <div className="flex-1">
-              <span className="text-2xl font-medium">{speaker.name}</span>
-              {isYielded && originalSpeaker && (
-                <Badge variant="secondary" className="ml-3 text-xs">
-                  Yielded from {originalSpeaker.name} at {formatTime(yieldedTime)}
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                className="hover:bg-accent rounded-md p-1" 
-                onClick={onNext}
-                title="Remove speaker"
-              >
-                <Cross2Icon className="h-4 w-4" />
-              </button>
-              <button 
-                className="hover:bg-accent rounded-md p-1 grid grid-cols-3 gap-0.5 cursor-move" 
-                onMouseDown={(e) => {
-                  // Find the draggable parent and trigger its dragstart
-                  const draggableParent = e.currentTarget.closest('[draggable="true"]') as HTMLElement;
-                  if (draggableParent) {
-                    draggableParent.draggable = true;
-                    const dragEvent = new DragEvent('dragstart', { bubbles: true });
-                    draggableParent.dispatchEvent(dragEvent);
-                  }
-                }}
-                title="Drag to reorder"
-              >
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="w-1 h-1 rounded-full bg-foreground/70" />
-                ))}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
-  )
 }
 
 function UpcomingSpeakers({
@@ -764,73 +646,119 @@ export default function SessionPage() {
   };
 
   const handleExtendMotion = (motion: Motion) => {
-    if (!motion) {
-      toast.error('Invalid motion to extend');
-      return;
-    }
-    
-    // Check if motion is passed and in progress
-    if (motion.status !== "In Progress") {
-      toast.error(`Cannot extend: Motion must be in progress (current status: ${motion.status})`);
-      return;
-    }
+  console.log('handleExtendMotion called with:', motion);
+  console.log('Motion status:', motion.status);
+  
+  if (!motion) {
+    toast.error('Invalid motion to extend');
+    return;
+  }
+  
+  if (motion.status !== "In Progress") {
+    console.log('Motion status check failed:', motion.status);
+    toast.error(`Cannot extend: Motion must be in progress (current status: ${motion.status})`);
+    return;
+  }
 
-    // Validate that it's a type that can be extended
-    if (motion.type !== "Moderated Caucus" && motion.type !== "GSL") {
-      toast.error(`Cannot extend: Only Moderated Caucus and GSL can be extended`);
-      return;
-    }
-    
-    // Store the motion to extend in state and show extension dialog
-    setExtendMotionData({ open: true, motion });
-    toast.info(`Opening extension dialog for ${motion.type}`);
+  if (motion.type !== "Moderated Caucus" && motion.type !== "GSL") {
+    console.log('Motion type check failed:', motion.type);
+    toast.error(`Cannot extend: Only Moderated Caucus and GSL can be extended`);
+    return;
+  }
+  
+  console.log('Setting extend motion data to:', { open: true, motion });
+  setExtendMotionData({ open: true, motion });
+  toast.info(`Opening extension dialog for ${motion.type}`);
+};
+
+  const handleExtendMotionSubmit = (
+  motionId: string, 
+  additionalDuration: number, 
+  newSpeakingTime: number, 
+  proposingCountry: string,
+  passed: boolean  // ADD THIS PARAMETER
+) => {
+  const toastId = toast.loading('Processing motion extension...');
+  
+  // Validate parameters
+  if (!motionId || additionalDuration <= 0 || newSpeakingTime <= 0 || !proposingCountry) {
+    toast.dismiss(toastId);
+    toast.error('Invalid extension parameters');
+    return;
+  }
+
+  // Find and validate the original motion
+  const originalMotion = motions.find(m => m.id === motionId);
+  if (!originalMotion) {
+    toast.dismiss(toastId);
+    toast.error('Original motion not found');
+    return;
+  }
+
+  // Check motion status
+  if (originalMotion.status !== "In Progress") {
+    toast.dismiss(toastId);
+    toast.error('Cannot extend: Motion must be in progress');
+    return;
+  }
+
+  // Calculate total time in seconds for display
+  const totalTimeInSeconds = Math.round(additionalDuration * 60);
+
+  // Create extension with proper status based on vote
+  const extension: ExtendedMotion = {
+    id: Math.random().toString(36).substring(7),
+    type: "Extension",
+    name: `Extension of ${originalMotion.name}`,
+    createdAt: new Date().toISOString(),
+    status: passed ? "Passed" : "Failed",  // SET STATUS BASED ON VOTE
+    duration: additionalDuration,  // Keep in minutes for consistency
+    speakingTime: newSpeakingTime,
+    parentMotionId: motionId,
+    proposingCountry,
+    totalTime: additionalDuration,
+    currentSpeakerIndex: 0,
+    speakers: [],
+    committeeId: originalMotion.committeeId || committeeName
   };
 
-  const handleExtendMotionSubmit = (motionId: string, additionalDuration: number, newSpeakingTime: number, proposingCountry: string) => {
-    const toastId = toast.loading('Processing motion extension...');
-    
-    // Validate parameters
-    if (!motionId || additionalDuration <= 0 || newSpeakingTime <= 0 || !proposingCountry) {
-      toast.dismiss(toastId);
-      toast.error('Invalid extension parameters');
-      return;
+    // If passed, update the parent motion immediately
+  if (passed) {
+    setMotions(prev => prev.map(motion => {
+      if (motion.id === motionId) {
+        return {
+          ...motion,
+          duration: (motion.duration || 0) + additionalDuration,
+          totalTime: (motion.totalTime || 0) + additionalDuration,
+          speakingTime: newSpeakingTime
+        };
+      }
+      return motion;
+    }));
+
+    // Update timer if this motion is active
+    if (activeMotionId === motionId) {
+      const updatedMotion = motions.find(m => m.id === motionId);
+      if (updatedMotion) {
+        updateTimerSettings({
+          ...updatedMotion,
+          duration: (updatedMotion.duration || 0) + additionalDuration,
+          speakingTime: newSpeakingTime
+        });
+      }
     }
 
-    // Find and validate the original motion
-    const originalMotion = motions.find(m => m.id === motionId);
-    if (!originalMotion) {
-      toast.dismiss(toastId);
-      toast.error('Original motion not found');
-      return;
-    }
+    toast.dismiss(toastId);
+    toast.success(`Extension passed! Added ${Math.floor(additionalDuration)} minutes`);
+  } else {
+    toast.dismiss(toastId);
+    toast.info('Extension failed');
+  }
 
-    // Check motion status
-    if (originalMotion.status !== "In Progress") {
-      toast.dismiss(toastId);
-      toast.error('Cannot extend: Motion must be in progress');
-      return;
-    }
-
-    // Create a new motion for the extension with its own voting and controls
-    const extension: ExtendedMotion = {
-      id: Math.random().toString(36).substring(7),
-      type: "Extension",
-      name: `Extension of ${originalMotion.name}`,
-      createdAt: new Date().toISOString(),
-      status: "Pending",
-      duration: additionalDuration,
-      speakingTime: newSpeakingTime,
-      parentMotionId: motionId,
-      proposingCountry,
-      totalTime: additionalDuration,
-      currentSpeakerIndex: 0,
-      speakers: [],
-      committeeId: originalMotion.committeeId || committeeName
-    };
-
-    setMotions(prev => [...prev, extension]);
-    setExtendMotionData({ open: false });
-  };
+  // Add the extension to the list
+  setMotions(prev => [...prev, extension]);
+  setExtendMotionData({ open: false });
+};
 
   const handleAdjournMotion = (motionId: string) => {
     const motion = motions.find(m => m.id === motionId);
@@ -1410,101 +1338,56 @@ export default function SessionPage() {
                   />
                   {/* Display extension motions under their parent */}
                   {motions.filter(m => m.type === "Extension" && m.parentMotionId).map(extension => {
-                    const parent = motions.find(m => m.id === extension.parentMotionId);
-                    if (!parent) return null;
-                    return (
-                      <div key={extension.id} className="ml-6 mt-2">
-                        <Card className="p-4">
-                          <div className="flex flex-col gap-4">
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <h4 className="font-medium">Extension to {parent.type}</h4>
-                                <p className="text-sm text-muted-foreground">
-                                  Proposed by: {extension.proposingCountry}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Additional Time: {Math.floor(extension.duration / 60)}:{(extension.duration % 60).toString().padStart(2, '0')}
-                                </p>
-                                {extension.speakingTime && (
-                                  <p className="text-sm text-muted-foreground">
-                                    Speaking Time: {Math.floor(extension.speakingTime / 60)}:{(extension.speakingTime % 60).toString().padStart(2, '0')}
-                                  </p>
-                                )}
-                              </div>
-                              <Badge variant={extension.status === "Passed" ? "default" : "secondary"}>
-                                {extension.status}
-                              </Badge>
-                            </div>
-                            
-                            {extension.status === "Pending" && (
-                              <div className="flex flex-col gap-4">
-                                <div className="grid grid-cols-3 gap-2">
-                                  <div className="flex flex-col items-center">
-                                    <Input 
-                                      type="number" 
-                                      className="text-center" 
-                                      placeholder="For"
-                                      value={extension.votesFor || ''}
-                                      onChange={(e) => {
-                                        const value = parseInt(e.target.value) || 0;
-                                        setMotions(prev => prev.map(m => 
-                                          m.id === extension.id ? { ...m, votesFor: value } : m
-                                        ));
-                                      }}
-                                    />
-                                    <span className="text-sm text-muted-foreground mt-1">For</span>
-                                  </div>
-                                  <div className="flex flex-col items-center">
-                                    <Input 
-                                      type="number" 
-                                      className="text-center" 
-                                      placeholder="Against"
-                                      value={extension.votesAgainst || ''}
-                                      onChange={(e) => {
-                                        const value = parseInt(e.target.value) || 0;
-                                        setMotions(prev => prev.map(m => 
-                                          m.id === extension.id ? { ...m, votesAgainst: value } : m
-                                        ));
-                                      }}
-                                    />
-                                    <span className="text-sm text-muted-foreground mt-1">Against</span>
-                                  </div>
-                                  <div className="flex flex-col items-center">
-                                    <Input 
-                                      type="number" 
-                                      className="text-center" 
-                                      placeholder="Abstain"
-                                      value={extension.abstentions || ''}
-                                      onChange={(e) => {
-                                        const value = parseInt(e.target.value) || 0;
-                                        setMotions(prev => prev.map(m => 
-                                          m.id === extension.id ? { ...m, abstentions: value } : m
-                                        ));
-                                      }}
-                                    />
-                                    <span className="text-sm text-muted-foreground mt-1">Abstain</span>
-                                  </div>
-                                </div>
-                                <Button 
-                                  className="w-full"
-                                  onClick={() => {
-                                    handleMotionVote(
-                                      extension.id, 
-                                      extension.votesFor || 0,
-                                      extension.votesAgainst || 0,
-                                      extension.abstentions || 0
-                                    );
-                                  }}
-                                >
-                                  Submit Vote
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </Card>
-                      </div>
-                    );
-                  })}
+  const parent = motions.find(m => m.id === extension.parentMotionId);
+  if (!parent) return null;
+  
+  // Calculate total time properly
+  const durationInSeconds = Math.round((extension.duration || 0) * 60);
+  const speakingTimeInSeconds = extension.speakingTime || 0;
+  
+  return (
+    <div key={extension.id} className="ml-6 mt-2">
+      <Card className="p-4 border-l-4 border-l-primary">
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <div className="flex-1">
+              <h4 className="font-medium text-base">
+                Extension to {parent.name}
+              </h4>
+              <div className="mt-2 space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium">Proposed by:</span> {extension.proposingCountry}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium">Additional Time:</span>{' '}
+                  {Math.floor(durationInSeconds / 60)}:{(durationInSeconds % 60).toString().padStart(2, '0')}
+                </p>
+                {speakingTimeInSeconds > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Speaking Time:</span>{' '}
+                    {Math.floor(speakingTimeInSeconds / 60)}:{(speakingTimeInSeconds % 60).toString().padStart(2, '0')} per speaker
+                  </p>
+                )}
+              </div>
+            </div>
+            <Badge 
+              variant={
+                extension.status === "Passed" 
+                  ? "default" 
+                  : extension.status === "Failed"
+                  ? "destructive"
+                  : "secondary"
+              }
+              className="shrink-0"
+            >
+              {extension.status}
+            </Badge>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+})}
                 </Card>
               </div>
             )}
@@ -1556,10 +1439,6 @@ export default function SessionPage() {
                     }
                     return motion;
                   }));
-                } else {
-                  // Normal flow: add to speaker queue
-                  setSpeakerQueue(prev => [...prev, speaker]);
-                  logSpeakerAdded(speaker.name);
                 }
               }} 
             />
@@ -1583,13 +1462,15 @@ export default function SessionPage() {
         onYield={handleYield}
       />
 
-      <ExtendMotionDialog
-        open={extendMotionData.open}
-        onOpenChange={(open) => setExtendMotionData(prev => ({ ...prev, open }))}
-        originalMotion={extendMotionData.motion!}
-        onSubmit={handleExtendMotionSubmit}
-        countries={committee?.countryList || []}
-      />
+      {extendMotionData.motion && (
+  <ExtendMotionDialog
+    open={extendMotionData.open}
+    onOpenChange={(open) => setExtendMotionData(prev => ({ ...prev, open }))}
+    originalMotion={extendMotionData.motion}
+    onSubmit={handleExtendMotionSubmit}
+    countries={committee?.countryList || []}
+  />
+)}
     </div>
   );
 }
