@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { FileTextIcon, PlusIcon, ExclamationTriangleIcon, FileIcon, DotsHorizontalIcon, ChevronRightIcon } from "@radix-ui/react-icons"
+import { FileTextIcon, PlusIcon, ExclamationTriangleIcon, FileIcon, DotsHorizontalIcon, ChevronRightIcon, Share2Icon, ArchiveIcon } from "@radix-ui/react-icons"
 import { useState, useEffect } from "react"
 import { useSidePaneStore } from "@/lib/store/side-pane-store"
 import {
@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { logDraftCreated, logDraftDeleted } from "@/lib/logging"
+import { toast } from "sonner"
 
 type Draft = {
   id: string
@@ -41,6 +42,7 @@ type Draft = {
   createdAt: Date
   updatedAt: Date
   tags: string[]
+  archived?: boolean
 }
 
 type DraftType = {
@@ -64,12 +66,14 @@ export default function DraftsPage() {
       createdAt: new Date(),
       updatedAt: new Date(),
       tags: ["Crisis Note"],
+      archived: false,
     }
   ])
   const [searchQuery, setSearchQuery] = useState("")
   const [isNewDraftOpen, setIsNewDraftOpen] = useState(false)
   const [draftName, setDraftName] = useState("")
   const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const { 
     open, 
     lastEditedDraftId, 
@@ -82,29 +86,41 @@ export default function DraftsPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [draftToDelete, setDraftToDelete] = useState<Draft | null>(null)
   const [hoveredDraft, setHoveredDraft] = useState<string | null>(null)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [draftToShare, setDraftToShare] = useState<Draft | null>(null)
 
   // Auto-save effect
   useEffect(() => {
     if (!lastEditedDraftId || isSaved) return;
+    
     const timeout = setTimeout(() => {
-      setDrafts((prevDrafts) =>
-        prevDrafts.map((d) =>
-          d.id === lastEditedDraftId ? { ...d, content: editorContent, updatedAt: new Date() } : d
-        )
-      );
+      setDrafts((prevDrafts) => {
+        const existingDraft = prevDrafts.find(d => d.id === lastEditedDraftId);
+        // Only update if content actually changed
+        if (existingDraft && existingDraft.content !== editorContent) {
+          return prevDrafts.map((d) =>
+            d.id === lastEditedDraftId 
+              ? { ...d, content: editorContent, updatedAt: new Date() } 
+              : d
+          );
+        }
+        return prevDrafts;
+      });
       setIsSaved(true);
     }, 1000); // 1s debounce
+    
     return () => clearTimeout(timeout);
   }, [editorContent, lastEditedDraftId, isSaved, setIsSaved])
 
-  const filteredDrafts = drafts.filter((draft) =>
-    draft.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    draft.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    draft.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
-
-  // selectedDraft is used to find the current draft being edited
-  // const selectedDraft = drafts.find(d => d.id === lastEditedDraftId)
+  const filteredDrafts = drafts.filter((draft) => {
+    const matchesSearch = draft.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      draft.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      draft.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    
+    const matchesArchiveFilter = showArchived ? draft.archived : !draft.archived
+    
+    return matchesSearch && matchesArchiveFilter
+  })
 
   const handleCreateDraft = () => {
     if (!draftName.trim() || !selectedType) return
@@ -122,6 +138,7 @@ export default function DraftsPage() {
       createdAt: new Date(),
       updatedAt: new Date(),
       tags: [selectedType],
+      archived: false,
     }
 
     setDrafts([...drafts, newDraft])
@@ -129,6 +146,7 @@ export default function DraftsPage() {
     setIsNewDraftOpen(false)
     setDraftName("")
     setSelectedType(null)
+    toast.success(`Draft "${draftName}" created successfully`)
   }
 
   const getTagColor = (tag: string) => {
@@ -143,10 +161,87 @@ export default function DraftsPage() {
       const draftType = draftToDelete.tags[0] || "Draft"
       logDraftDeleted(draftToDelete.title, draftType)
       setDrafts(drafts.filter(d => d.id !== draftToDelete.id))
+      toast.success(`Draft "${draftToDelete.title}" deleted`)
       setDraftToDelete(null)
     }
     setIsDeleteAlertOpen(false)
   }
+
+  const handleDownloadPDF = (draft: Draft, e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    // Create a simple HTML document from the markdown content
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>${draft.title}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              max-width: 800px;
+              margin: 40px auto;
+              padding: 20px;
+              line-height: 1.6;
+            }
+            h1, h2, h3 { color: #333; }
+            pre { background: #f4f4f4; padding: 10px; border-radius: 4px; }
+            code { background: #f4f4f4; padding: 2px 4px; border-radius: 2px; }
+          </style>
+        </head>
+        <body>
+          <h1>${draft.title}</h1>
+          <p><em>Created: ${draft.createdAt.toLocaleDateString()}</em></p>
+          <hr>
+          <pre>${draft.content}</pre>
+        </body>
+      </html>
+    `
+    
+    // Create a blob and download link
+    const blob = new Blob([htmlContent], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${draft.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    toast.success(`"${draft.title}" downloaded as HTML`)
+  }
+
+  const handleArchive = (draft: Draft, e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    setDrafts(prevDrafts =>
+      prevDrafts.map(d =>
+        d.id === draft.id ? { ...d, archived: !d.archived } : d
+      )
+    )
+    
+    toast.success(draft.archived ? `"${draft.title}" unarchived` : `"${draft.title}" archived`)
+  }
+
+  const handleShare = (draft: Draft, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDraftToShare(draft)
+    setIsShareDialogOpen(true)
+  }
+
+  const handleCopyShareLink = () => {
+    if (draftToShare) {
+      // Create a shareable link (in a real app, this would be a proper URL)
+      const shareLink = `${window.location.origin}/drafts/${draftToShare.id}`
+      navigator.clipboard.writeText(shareLink)
+      toast.success("Link copied to clipboard")
+      setIsShareDialogOpen(false)
+    }
+  }
+
+  const archivedCount = drafts.filter(d => d.archived).length
 
   return (
     <div className="min-h-dvh bg-background">
@@ -159,8 +254,9 @@ export default function DraftsPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={open} variant="outline">
-              Open Side Pane (Temp)
+            <Button onClick={() => setShowArchived(!showArchived)} variant="outline">
+              <ArchiveIcon className="mr-2 h-4 w-4" />
+              {showArchived ? "Show Active" : `Archived (${archivedCount})`}
             </Button>
             <Button onClick={() => setIsNewDraftOpen(true)}>
               <PlusIcon className="mr-2 h-4 w-4" />
@@ -186,6 +282,8 @@ export default function DraftsPage() {
               <p className="text-muted-foreground">
                 {searchQuery
                   ? "Try adjusting your search query"
+                  : showArchived
+                  ? "No archived drafts yet"
                   : "Get started by creating your first draft"}
               </p>
             </div>
@@ -199,10 +297,14 @@ export default function DraftsPage() {
                 onMouseEnter={() => setHoveredDraft(draft.id)}
                 onMouseLeave={() => setHoveredDraft(null)}
                 onClick={() => {
-                  setLastEditedDraft(draft.id, draft.title)
-                  setEditorContent(draft.content)
-                  setIsSaved(true)
-                  open()
+                  // Ensure we're setting fresh content to prevent duplicates
+                  const draftToOpen = drafts.find(d => d.id === draft.id)
+                  if (draftToOpen) {
+                    setLastEditedDraft(draftToOpen.id, draftToOpen.title)
+                    setEditorContent(draftToOpen.content)
+                    setIsSaved(true)
+                    open()
+                  }
                 }}
               >
                 <div className="space-y-3">
@@ -218,6 +320,11 @@ export default function DraftsPage() {
                         {tag}
                       </Badge>
                     ))}
+                    {draft.archived && (
+                      <Badge variant="outline" className="bg-gray-200 text-gray-700">
+                        Archived
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
@@ -230,12 +337,33 @@ export default function DraftsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>Download as PDF</DropdownMenuItem>
-                        <DropdownMenuItem>Archive</DropdownMenuItem>
                         <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const draftToEdit = drafts.find(d => d.id === draft.id)
+                            if (draftToEdit) {
+                              setLastEditedDraft(draftToEdit.id, draftToEdit.title)
+                              setEditorContent(draftToEdit.content)
+                              setIsSaved(true)
+                              open()
+                            }
+                          }}
+                        >
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => handleDownloadPDF(draft, e)}>
+                          Download as HTML
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => handleShare(draft, e)}>
+                          Share
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => handleArchive(draft, e)}>
+                          {draft.archived ? "Unarchive" : "Archive"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation()
                             setDraftToDelete(draft)
                             setIsDeleteAlertOpen(true)
                           }}
@@ -315,6 +443,48 @@ export default function DraftsPage() {
               disabled={!draftName.trim() || !selectedType}
             >
               Create Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share Draft</DialogTitle>
+            <DialogDescription>
+              Share &quot;{draftToShare?.title}&quot; with others
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Share Link</Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={draftToShare ? `${window.location.origin}/drafts/${draftToShare.id}` : ""}
+                  className="flex-1"
+                />
+                <Button onClick={handleCopyShareLink}>
+                  Copy
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Anyone with this link can view the draft
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsShareDialogOpen(false)
+                setDraftToShare(null)
+              }}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

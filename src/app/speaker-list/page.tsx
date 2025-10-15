@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { SpeakerAttendance } from "@/components/speaker-attendance"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { GearIcon, ReloadIcon, PlayIcon, MixerHorizontalIcon, Cross2Icon } from "@radix-ui/react-icons"
 import { Vote, X } from "lucide-react"
 import { toast } from "sonner"
@@ -34,12 +34,14 @@ function TimeDisplay({
   currentTime, 
   totalTime, 
   isRunning,
-  motionTotalTime
+  motionTotalTime,
+  yieldedTime = 0  // ADD THIS PARAMETER
 }: { 
   currentTime: number; 
   totalTime: number; 
   isRunning: boolean;
   motionTotalTime?: number;
+  yieldedTime?: number;  // ADD THIS TYPE
 }) {
   const formatTime = (seconds: number, showHours = false) => {
     const isOvertime = seconds < 0;
@@ -78,6 +80,9 @@ function TimeDisplay({
     }
   }
 
+  // Calculate total time including yielded time
+  const displayTotalTime = totalTime + yieldedTime;
+
   return (
     <div className="relative text-center py-12">
       {/* LED Indicator */}
@@ -86,9 +91,14 @@ function TimeDisplay({
       </div>
       <div className="flex flex-col items-center gap-2">
         <div className="text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight break-words">
-          {formatTime(currentTime)} / {formatTime(totalTime)}
+          {formatTime(currentTime)} / {formatTime(displayTotalTime)}
         </div>
         <div className="flex flex-col items-center gap-1 mt-2">
+          {yieldedTime > 0 && (
+            <div className="text-lg text-green-600 font-semibold">
+              +{Math.floor(yieldedTime / 60)}:{(yieldedTime % 60).toString().padStart(2, '0')} yielded
+            </div>
+          )}
           {motionTotalTime && (
             <div className="text-lg text-muted-foreground">
               Total Time: {formatTime(motionTotalTime * 60, true)}
@@ -155,36 +165,121 @@ function TimerControls({
   )
 }
 
+
 function CurrentSpeaker({ 
   speaker, 
   onNext,
   isYielded,
   originalSpeaker,
   yieldedTime,
-  onDragStart,
-  onDragOver,
-  onDrop
+  onSwapWithQueue,
 }: { 
   speaker: Speaker | null
   onNext: () => void
   isYielded: boolean
   originalSpeaker: Speaker | null
   yieldedTime: number
-  onDragStart?: (e: React.DragEvent, speaker: Speaker) => void
-  onDragOver?: (e: React.DragEvent) => void
-  onDrop?: (e: React.DragEvent) => void
+  onSwapWithQueue: (queueSpeaker: Speaker, queueIndex: number) => void
 }) {
+  const [draggedOver, setDraggedOver] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (!speaker) return;
+    
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      speaker: speaker,
+      from: 'current'
+    }));
+    
+    if (!cardRef.current) return;
+    
+    const rect = cardRef.current.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(cardRef.current);
+    
+    const handleOffsetFromRight = 50;
+    const cursorOffsetX = rect.width - handleOffsetFromRight;
+    const cursorOffsetY = rect.height / 2;
+    
+    const dragPreview = document.createElement('div')
+    dragPreview.style.position = 'fixed'
+    dragPreview.style.top = '-9999px'
+    dragPreview.style.left = '-9999px'
+    dragPreview.style.width = `${rect.width}px`
+    dragPreview.style.opacity = '0.7'
+    dragPreview.style.pointerEvents = 'none'
+    
+    dragPreview.innerHTML = `
+      <div style="
+        background: ${computedStyle.backgroundColor};
+        border: 1px solid hsl(var(--border));
+        border-radius: ${computedStyle.borderRadius};
+        padding: ${computedStyle.padding};
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+        width: ${rect.width}px;
+      ">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 40px; height: 40px; border-radius: 9999px; background: hsl(var(--muted)); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">UN</div>
+          <span style="font-size: 1.125rem; font-weight: 500; line-height: 1.75rem; color: hsl(var(--foreground));">${speaker.name}</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(dragPreview)
+    const dragImage = dragPreview.firstElementChild as HTMLElement
+    e.dataTransfer.setDragImage(dragImage, cursorOffsetX, cursorOffsetY)
+    
+    setTimeout(() => {
+      document.body.removeChild(dragPreview)
+    }, 0)
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDraggedOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDraggedOver(false);
+    
+    const data = e.dataTransfer.getData('application/json');
+    if (!data) return;
+
+    try {
+      const { speaker: droppedSpeaker, from, queueIndex } = JSON.parse(data);
+      
+      if (from === 'queue') {
+        // Queue speaker dropped on current speaker - swap them
+        onSwapWithQueue(droppedSpeaker, queueIndex);
+      }
+    } catch (err) {
+      console.error('Error processing drop:', err);
+      toast.error('Failed to swap speakers');
+    }
+  };
+
   if (!speaker) {
     return (
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Current Speaker</h2>
-        <Card className="p-4">
+        <Card 
+          className={`p-4 ${draggedOver ? 'border-primary border-2' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <div className="text-center text-muted-foreground">No current speaker</div>
         </Card>
       </div>
@@ -194,41 +289,62 @@ function CurrentSpeaker({
   return (
     <div className="mb-8">
       <h2 className="text-xl font-semibold mb-4">Current Speaker</h2>
-      <Card className="p-4">
+      <Card 
+        ref={cardRef}
+        className={`p-4 ${draggedOver ? 'border-primary border-2' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <FlagAvatar query={speaker.flagQuery} alt={speaker.name} />
-            <div>
-              <div className="text-lg font-medium">{speaker.name}</div>
+            <div className="flex flex-col">
+              <span className="text-lg font-medium">{speaker.name}</span>
               {isYielded && originalSpeaker && (
-                <div className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   Yielded from {originalSpeaker.name} ({formatTime(yieldedTime)})
-                </div>
+                </span>
+              )}
+              {speaker.yieldedTime && speaker.yieldedTime > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  +{Math.floor(speaker.yieldedTime / 60)}:{(speaker.yieldedTime % 60).toString().padStart(2, '0')} yielded time
+                </span>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div 
-              className="grid grid-cols-2 gap-1 cursor-move" 
-              draggable
-              onDragStart={(e) => onDragStart?.(e, speaker)}
-              style={{ padding: '2px' }}
-            >
-              {[...Array(6)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className="w-1.5 h-1.5 rounded-full bg-muted-foreground"
-                />
-              ))}
-            </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
               onClick={onNext}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              aria-label={`Remove ${speaker.name}`}
             >
-              <X className="h-4 w-4" />
+              <Cross2Icon className="h-5 w-5" />
             </Button>
+            <div 
+              className="cursor-grab active:cursor-grabbing p-2 hover:bg-muted rounded-md transition-colors"
+              draggable={true}
+              onDragStart={handleDragStart}
+              aria-label="Drag to reorder"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 15 15"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="text-muted-foreground"
+              >
+                <path
+                  d="M5.5 4.625C6.12132 4.625 6.625 4.12132 6.625 3.5C6.625 2.87868 6.12132 2.375 5.5 2.375C4.87868 2.375 4.375 2.87868 4.375 3.5C4.375 4.12132 4.87868 4.625 5.5 4.625ZM9.5 4.625C10.1213 4.625 10.625 4.12132 10.625 3.5C10.625 2.87868 10.1213 2.375 9.5 2.375C8.87868 2.375 8.375 2.87868 8.375 3.5C8.375 4.12132 8.87868 4.625 9.5 4.625ZM10.625 7.5C10.625 8.12132 10.1213 8.625 9.5 8.625C8.87868 8.625 8.375 8.12132 8.375 7.5C8.375 6.87868 8.87868 6.375 9.5 6.375C10.1213 6.375 10.625 6.87868 10.625 7.5ZM5.5 8.625C6.12132 8.625 6.625 8.12132 6.625 7.5C6.625 6.87868 6.12132 6.375 5.5 6.375C4.87868 6.375 4.375 6.87868 4.375 7.5C4.375 8.12132 4.87868 8.625 5.5 8.625ZM10.625 11.5C10.625 12.1213 10.1213 12.625 9.5 12.625C8.87868 12.625 8.375 12.1213 8.375 11.5C8.375 10.8787 8.87868 10.375 9.5 10.375C10.1213 10.375 10.625 10.8787 10.625 11.5ZM5.5 12.625C6.12132 12.625 6.625 12.1213 6.625 11.5C6.625 10.8787 6.12132 10.375 5.5 10.375C4.87868 10.375 4.375 10.8787 4.375 11.5C4.375 12.1213 4.87868 12.625 5.5 12.625Z"
+                  fill="currentColor"
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
           </div>
         </div>
       </Card>
@@ -240,10 +356,14 @@ function UpcomingSpeakers({
   speakers,
   onRemove,
   onReorder,
+  currentSpeaker,
+  onMoveCurrentToQueue,
 }: {
   speakers: Speaker[]
   onRemove: (id: string) => void
   onReorder: (newOrder: Speaker[]) => void
+  currentSpeaker: Speaker | null
+  onMoveCurrentToQueue: (currentSpeaker: Speaker, insertIndex: number) => void
 }) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -252,7 +372,6 @@ function UpcomingSpeakers({
   const handleDragStart = (e: React.DragEvent, index: number, cardElement: HTMLDivElement | null) => {
     setDraggedIndex(index);
     
-    // Set the data for the drag operation
     e.dataTransfer.setData('application/json', JSON.stringify({
       speaker: speakers[index],
       from: 'queue',
@@ -261,17 +380,13 @@ function UpcomingSpeakers({
     
     if (!cardElement) return;
     
-    // Get the exact dimensions and styles of the original card
     const rect = cardElement.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(cardElement);
     
-    // Calculate the offset to position cursor over the drag handle
-    // The handle is on the right side, so we offset from the right edge
-    const handleOffsetFromRight = 50; // Approximate position of the handle from the right
+    const handleOffsetFromRight = 50;
     const cursorOffsetX = rect.width - handleOffsetFromRight;
     const cursorOffsetY = rect.height / 2;
     
-    // Create a custom drag image that matches the original card
     const dragPreview = document.createElement('div')
     dragPreview.style.position = 'fixed'
     dragPreview.style.top = '-9999px'
@@ -280,7 +395,6 @@ function UpcomingSpeakers({
     dragPreview.style.opacity = '0.7'
     dragPreview.style.pointerEvents = 'none'
     
-    // Clone the card content
     dragPreview.innerHTML = `
       <div style="
         background: ${computedStyle.backgroundColor};
@@ -301,7 +415,6 @@ function UpcomingSpeakers({
     const dragImage = dragPreview.firstElementChild as HTMLElement
     e.dataTransfer.setDragImage(dragImage, cursorOffsetX, cursorOffsetY)
     
-    // Remove the preview element after a short delay
     setTimeout(() => {
       document.body.removeChild(dragPreview)
     }, 0)
@@ -322,26 +435,23 @@ function UpcomingSpeakers({
       const { speaker: droppedSpeaker, from, queueIndex } = JSON.parse(data);
 
       if (from === 'current') {
-        // Current speaker being dropped into queue
-        const newSpeakers = [...speakers];
-        // Create a new ID for the speaker when moving from current to queue
-        const speakerWithNewId = {
-          ...droppedSpeaker,
-          id: `${droppedSpeaker.id}_queue_${Date.now()}`
-        };
-        newSpeakers.splice(dropIndex, 0, speakerWithNewId);
-        onReorder(newSpeakers);
+        // Current speaker being dropped into queue - call the callback
+        onMoveCurrentToQueue(droppedSpeaker, dropIndex);
+        toast.success(`${droppedSpeaker.name} moved to queue position ${dropIndex + 1}`);
+        
       } else if (from === 'queue') {
-        // Queue speaker being reordered
         if (queueIndex === dropIndex) return;
         
         const newSpeakers = [...speakers];
         const [draggedItem] = newSpeakers.splice(queueIndex, 1);
         newSpeakers.splice(dropIndex, 0, draggedItem);
         onReorder(newSpeakers);
+        
+        toast.info(`Reordered speaker list`);
       }
     } catch (err) {
       console.error('Error processing drop:', err);
+      toast.error('Failed to reorder speakers');
     }
     
     setDraggedIndex(null);
@@ -909,61 +1019,9 @@ export default function SessionPage() {
     return () => clearInterval(interval);
   }, [isRunning, currentTime]);
 
-  const handleDragFromCurrent = (e: React.DragEvent, speaker: Speaker) => {
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      speaker,
-      from: 'current'
-    }));
-  };
-
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDropOnCurrent = (e: React.DragEvent) => {
-    e.preventDefault();
-    const data = e.dataTransfer.getData('application/json');
-    if (!data) return;
-
-    try {
-      const { speaker: droppedSpeaker, from, queueIndex } = JSON.parse(data);
-      
-      if (from === 'queue') {
-        // Get current speaker before updating
-        const oldCurrentSpeaker = currentSpeaker;
-        
-        // Set the new current speaker
-        setCurrentSpeaker(droppedSpeaker);
-        
-        // Update the queue
-        const newQueue = [...speakerQueue];
-        newQueue.splice(queueIndex, 1); // Remove dragged speaker
-        
-        if (oldCurrentSpeaker) {
-          // Create a new ID for the current speaker being moved to queue
-          const oldSpeakerWithNewId = {
-            ...oldCurrentSpeaker,
-            id: `${oldCurrentSpeaker.id}_queue_${Date.now()}`
-          };
-          newQueue.splice(queueIndex, 0, oldSpeakerWithNewId);
-        }
-        
-        setSpeakerQueue(newQueue);
-        
-        // Update session storage
-        const sessionData = getSessionData();
-        if (sessionData) {
-          updateSessionData({
-            ...sessionData,
-            currentSpeaker: droppedSpeaker,
-            speakerQueue: newQueue,
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Error processing drop:', err);
-    }
   };
 
   const handleRemoveSpeaker = (id: string) => {
@@ -1064,132 +1122,147 @@ export default function SessionPage() {
   }
 
   const handleNextSpeaker = () => {
-    if (currentSpeaker) {
-      toast.success(`${currentSpeaker.name} completed speaking`);
-    }
+  if (currentSpeaker) {
+    toast.success(`${currentSpeaker.name} completed speaking`);
+  }
+  
+  if (speakerQueue.length > 0) {
+    // Get next speaker and remaining queue
+    const [nextSpeaker, ...remainingQueue] = speakerQueue;
+    toast.info(`Next speaker: ${nextSpeaker.name}`);
     
-    if (speakerQueue.length > 0) {
-      // Get next speaker and remaining queue
-      const [nextSpeaker, ...remainingQueue] = speakerQueue;
-      toast.info(`Next speaker: ${nextSpeaker.name}`);
+    // If the next speaker has yielded time, add it to their total time
+    if (nextSpeaker.yieldedTime && nextSpeaker.yieldedTime > 0) {
+      const totalSpeakingTime = timeInSeconds + nextSpeaker.yieldedTime;
+      setTotalTime(totalSpeakingTime);
+      setCurrentTime(totalSpeakingTime);
       
-      // If the next speaker has yielded time, add it to their total time
-      if (nextSpeaker.yieldedTime) {
-        const totalSpeakingTime = timeInSeconds + nextSpeaker.yieldedTime;
-        setTotalTime(totalSpeakingTime);
-        setCurrentTime(totalSpeakingTime);
-        
-        // Clear the yielded time after applying it
-        const updatedSpeaker = { ...nextSpeaker };
-        delete updatedSpeaker.yieldedTime;
-        setCurrentSpeaker(updatedSpeaker);
-      } else {
-        setCurrentSpeaker(nextSpeaker);
-        setCurrentTime(timeInSeconds);
-      }
-      
-      setSpeakerQueue(remainingQueue);
-      
-      // Get and update session storage
-      const sessionData = getSessionData();
-      if (sessionData) {
-        updateSessionData({
-          ...sessionData,
-          currentSpeaker: nextSpeaker,
-          speakerQueue: remainingQueue,
-        });
-      }
+      const mins = Math.floor(nextSpeaker.yieldedTime / 60);
+      const secs = nextSpeaker.yieldedTime % 60;
+      toast.info(`Includes ${mins}:${secs.toString().padStart(2, '0')} yielded time`);
     } else {
-      // No more speakers
-      setCurrentSpeaker(null);
-      
-      // Update session storage
-      const sessionData = getSessionData();
-      if (sessionData) {
-        updateSessionData({
-          ...sessionData,
-          currentSpeaker: null,
-          speakerQueue: [],
-        });
-      }
+      setTotalTime(timeInSeconds);
+      setCurrentTime(timeInSeconds);
     }
-
-    // Reset timer for next speaker
-    setCurrentTime(timeInSeconds);
-    setIsRunning(false);
-  };
-
-  const handleYield = (speaker: Speaker) => {
-    // Show loading toast
-    const toastId = toast.loading('Processing yield...');
     
-    // Validate yield conditions
-    if (!currentSpeaker) {
-      toast.dismiss(toastId);
-      toast.error('Cannot yield: No current speaker');
-      return;
-    }
-    if (currentTime <= 0) {
-      toast.error('Cannot yield: No time remaining');
-      return;
-    }
-    if (speaker.id === currentSpeaker.id) {
-      toast.error('Cannot yield to self');
-      return;
-    }
-
-    // Check if speaker is in queue or currently speaking
-    const isInQueue = speakerQueue.some(s => s.id === speaker.id);
-    if (isInQueue) {
-      toast.error('Cannot yield to a speaker who is already in queue');
-      return;
-    }
-
-    // Store the original state for potential cancellation
-    setOriginalSpeaker(currentSpeaker);
-    setOriginalQueue(speakerQueue);
-    setYieldedTime(currentTime);
-
-    // Remove any existing instances of this speaker from the queue
-    const queueWithoutSpeaker = speakerQueue.filter(s => s.name !== speaker.name);
+    setCurrentSpeaker(nextSpeaker);
+    setSpeakerQueue(remainingQueue);
     
-    // Create new speaker object with yielded time
-    const speakerWithYieldedTime = {
-      ...speaker,
-      yieldedTime: currentTime
-    };
-    
-    // Add the speaker at the end of the queue since it's a yield
-    const updatedQueue = [...queueWithoutSpeaker, speakerWithYieldedTime];
-    
-    // Update states
-    setIsYielded(true);
-    setCurrentSpeaker(speaker);
-    setSpeakerQueue(updatedQueue);
-    setIsRunning(false);
-
-    // Log the yield action
-    logSpeakerYield(currentSpeaker.name, speaker.name, currentTime);
-    
-    // Update session storage once with all changes
-    const storedData = getSessionData();
-    if (storedData) {
+    // Get and update session storage
+    const sessionData = getSessionData();
+    if (sessionData) {
       updateSessionData({
-        ...storedData,
-        currentSpeaker: speaker,
-        speakerQueue: updatedQueue,
-        isYielded: true,
-        yieldedTime: currentTime,
-        totalTime: currentTime, // Keep the remaining time
-        currentTime: currentTime // Keep the remaining time
+        ...sessionData,
+        currentSpeaker: nextSpeaker,
+        speakerQueue: remainingQueue,
       });
     }
+  } else {
+    // No more speakers
+    setCurrentSpeaker(null);
     
-    // Show success toast
-    toast.success(`Time yielded to ${speaker.name}`, {
-      description: `${Math.floor(currentTime / 60)}:${(currentTime % 60).toString().padStart(2, '0')} remaining`
+    // Update session storage
+    const sessionData = getSessionData();
+    if (sessionData) {
+      updateSessionData({
+        ...sessionData,
+        currentSpeaker: null,
+        speakerQueue: [],
+      });
+    }
+  }
+
+  // Always pause the timer when moving to next speaker
+  setIsRunning(false);
+};
+
+  const handleYield = (speaker: Speaker) => {
+  // Show loading toast
+  const toastId = toast.loading('Processing yield...');
+  
+  // Validate yield conditions
+  if (!currentSpeaker) {
+    toast.dismiss(toastId);
+    toast.error('Cannot yield: No current speaker');
+    return;
+  }
+  if (currentTime <= 0) {
+    toast.dismiss(toastId);
+    toast.error('Cannot yield: No time remaining');
+    return;
+  }
+  if (speaker.id === currentSpeaker.id) {
+    toast.dismiss(toastId);
+    toast.error('Cannot yield to self');
+    return;
+  }
+
+  // Get the yielded time amount
+  const yieldedTimeAmount = currentTime;
+  
+  // Find the speaker to yield to in the queue and get their index
+  const yieldToIndex = speakerQueue.findIndex(s => s.code === speaker.code);
+  
+  if (yieldToIndex === -1) {
+    toast.dismiss(toastId);
+    toast.error('Speaker not found in queue');
+    return;
+  }
+
+  // Create new speaker object with yielded time added
+  const speakerWithYieldedTime = {
+    ...speakerQueue[yieldToIndex],
+    yieldedTime: (speakerQueue[yieldToIndex].yieldedTime || 0) + yieldedTimeAmount,
+  };
+
+  // Update the queue: replace the speaker at yieldToIndex with updated speaker
+  const updatedQueue = [...speakerQueue];
+  updatedQueue[yieldToIndex] = speakerWithYieldedTime;
+
+  // Move to the next speaker (first in queue)
+  let nextSpeaker: Speaker | null = null;
+  let remainingQueue: Speaker[] = [];
+
+  if (updatedQueue.length > 0) {
+    const [nextUp, ...rest] = updatedQueue;
+    nextSpeaker = nextUp;
+    remainingQueue = rest;
+  }
+
+  // Update states
+  setCurrentSpeaker(nextSpeaker);
+  setSpeakerQueue(remainingQueue);
+  setCurrentTime(nextSpeaker?.yieldedTime ? totalTime + nextSpeaker.yieldedTime : totalTime);
+  setIsRunning(false);
+
+  // Log the yield action
+  logSpeakerYield(currentSpeaker.name, speaker.name, yieldedTimeAmount);
+  
+  // Update session storage
+  const storedData = getSessionData();
+  if (storedData) {
+    updateSessionData({
+      ...storedData,
+      currentSpeaker: nextSpeaker,
+      speakerQueue: remainingQueue,
     });
   }
+  
+  // Show success toast
+  toast.dismiss(toastId);
+  const mins = Math.floor(yieldedTimeAmount / 60);
+  const secs = yieldedTimeAmount % 60;
+  toast.success(`${currentSpeaker.name} yielded ${mins}:${secs.toString().padStart(2, '0')} to ${speaker.name}`);
+  if (nextSpeaker) {
+    if (nextSpeaker.yieldedTime && nextSpeaker.yieldedTime > 0) {
+      const yieldedMins = Math.floor(nextSpeaker.yieldedTime / 60);
+      const yieldedSecs = nextSpeaker.yieldedTime % 60;
+      toast.info(`${nextSpeaker.name} is now speaking (${totalTime + yieldedTimeAmount}s total: ${Math.floor(totalTime / 60)}m + ${yieldedMins}:${yieldedSecs})`);
+    } else {
+      toast.info(`Next speaker: ${nextSpeaker.name}`);
+    }
+  }
+}
 
   const handleSetTime = (minutes: number, seconds: number, updateMotion = false) => {
     const newTime = minutes * 60 + seconds;
@@ -1240,16 +1313,79 @@ export default function SessionPage() {
       // When yielded, update the original queue
       setOriginalQueue(newOrder);
     } else {
-      // Normal flow: update speaker queue
-      setSpeakerQueue(newOrder.filter(speaker => !speaker.id.includes('_queue_')));
+      // Normal flow: update speaker queue directly without filtering
+      setSpeakerQueue(newOrder);
     }
     logSpeakerReordered();
+  };
+
+  // Handler for swapping current speaker with queue speaker
+  const handleSwapCurrentWithQueue = (queueSpeaker: Speaker, queueIndex: number) => {
+    if (!currentSpeaker) return;
+    
+    const oldCurrentSpeaker = currentSpeaker;
+    
+    // Set queue speaker as new current speaker
+    setCurrentSpeaker(queueSpeaker);
+    
+    // Update the queue - replace the queue speaker with the old current speaker
+    // Ensure the old current speaker maintains a consistent ID format
+    const newQueue = [...speakerQueue];
+    newQueue[queueIndex] = {
+      ...oldCurrentSpeaker,
+      // Keep original ID structure, don't add _queue_ suffix
+      id: oldCurrentSpeaker.id.replace(/_queue_\d+$/, '') // Remove any existing _queue_ suffix
+    };
+    
+    setSpeakerQueue(newQueue);
+    
+    // Update session storage
+    const sessionData = getSessionData();
+    if (sessionData) {
+      updateSessionData({
+        ...sessionData,
+        currentSpeaker: queueSpeaker,
+        speakerQueue: newQueue,
+      });
+    }
+    
+    toast.success(`Swapped: ${queueSpeaker.name} is now speaking, ${oldCurrentSpeaker.name} moved to position ${queueIndex + 1}`);
+  };
+
+  // Handler for moving current speaker to queue
+  const handleMoveCurrentToQueue = (currentSpeaker: Speaker, insertIndex: number) => {
+    const newQueue = [...speakerQueue];
+    
+    // Keep the speaker's original ID without adding _queue_ suffix
+    const speakerToInsert = {
+      ...currentSpeaker,
+      id: currentSpeaker.id.replace(/_queue_\d+$/, '') // Remove any existing _queue_ suffix
+    };
+    
+    // Insert at the specified position
+    newQueue.splice(insertIndex, 0, speakerToInsert);
+    
+    // Clear current speaker
+    setCurrentSpeaker(null);
+    setSpeakerQueue(newQueue);
+    
+    // Update session storage
+    const sessionData = getSessionData();
+    if (sessionData) {
+      updateSessionData({
+        ...sessionData,
+        currentSpeaker: null,
+        speakerQueue: newQueue,
+      });
+    }
+    
+    toast.success(`${currentSpeaker.name} moved to queue position ${insertIndex + 1}`);
   };
 
   const availableForYield = allMembers.filter(
     (m) => m.id !== currentSpeaker?.id
   )
-
+  
   // Get available speakers based on attendance status
   // Available speakers are now handled by SpeakerAttendance component
 
@@ -1294,7 +1430,7 @@ export default function SessionPage() {
                     totalTime={activeMotionId ? (motions.find(m => m.id === activeMotionId)?.speakingTime || totalTime) : totalTime} 
                     isRunning={isRunning}
                     motionTotalTime={activeMotionId ? motions.find(m => m.id === activeMotionId)?.duration ?? 0 : undefined}
-                    speakingTime={activeMotionId ? motions.find(m => m.id === activeMotionId)?.speakingTime : undefined}
+                    yieldedTime={currentSpeaker?.yieldedTime || 0}  // ADD THIS LINE
                   />
                   <TimerControls
                     onYield={() => setYieldDialogOpen(true)}
@@ -1311,14 +1447,14 @@ export default function SessionPage() {
                     isYielded={isYielded}
                     originalSpeaker={originalSpeaker}
                     yieldedTime={yieldedTime}
-                    onDragStart={handleDragFromCurrent}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDropOnCurrent}
+                    onSwapWithQueue={handleSwapCurrentWithQueue}
                   />
                   <UpcomingSpeakers 
                     speakers={isYielded ? originalQueue : speakerQueue} 
                     onRemove={handleRemoveSpeaker}
                     onReorder={handleReorderSpeakers}
+                    currentSpeaker={currentSpeaker}
+                    onMoveCurrentToQueue={handleMoveCurrentToQueue}
                   />
                 </div>
               </>
@@ -1338,56 +1474,59 @@ export default function SessionPage() {
                   />
                   {/* Display extension motions under their parent */}
                   {motions.filter(m => m.type === "Extension" && m.parentMotionId).map(extension => {
-  const parent = motions.find(m => m.id === extension.parentMotionId);
-  if (!parent) return null;
-  
-  // Calculate total time properly
-  const durationInSeconds = Math.round((extension.duration || 0) * 60);
-  const speakingTimeInSeconds = extension.speakingTime || 0;
-  
-  return (
-    <div key={extension.id} className="ml-6 mt-2">
-      <Card className="p-4 border-l-4 border-l-primary">
-        <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <div className="flex-1">
-              <h4 className="font-medium text-base">
-                Extension to {parent.name}
-              </h4>
-              <div className="mt-2 space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-medium">Proposed by:</span> {extension.proposingCountry}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-medium">Additional Time:</span>{' '}
-                  {Math.floor(durationInSeconds / 60)}:{(durationInSeconds % 60).toString().padStart(2, '0')}
-                </p>
-                {speakingTimeInSeconds > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium">Speaking Time:</span>{' '}
-                    {Math.floor(speakingTimeInSeconds / 60)}:{(speakingTimeInSeconds % 60).toString().padStart(2, '0')} per speaker
-                  </p>
-                )}
-              </div>
-            </div>
-            <Badge 
-              variant={
-                extension.status === "Passed" 
-                  ? "default" 
-                  : extension.status === "Failed"
-                  ? "destructive"
-                  : "secondary"
-              }
-              className="shrink-0"
-            >
-              {extension.status}
-            </Badge>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-})}
+                    const parent = motions.find(m => m.id === extension.parentMotionId);
+                    if (!parent) return null;
+                    
+                    // Calculate time values
+                    const durationInSeconds = Math.round((extension.duration || 0) * 60);
+                    const speakingTimeInSeconds = extension.speakingTime || 0;
+                    const totalSpeakers = speakingTimeInSeconds > 0 
+                      ? Math.floor(durationInSeconds / speakingTimeInSeconds)
+                      : 0;
+                    
+                    // Status colors matching MotionList.tsx
+                    const statusColors: Record<string, string> = {
+                      "Pending": "bg-warning text-warning-foreground",
+                      "In Progress": "bg-primary text-primary-foreground",
+                      "Passed": "bg-success text-success-foreground",
+                      "Failed": "bg-destructive text-destructive-foreground",
+                    };
+                    
+                    return (
+                      <Card key={extension.id} className="p-5 mx-4 mb-3 flex flex-col gap-4 pb-4 max-w-[95%] hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-semibold text-lg">Extension to {parent.name}</h4>
+                              <Badge className={statusColors[extension.status] || "bg-secondary"}>
+                                {extension.status}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              <p>
+                                <span className="font-medium">Proposed by:</span> {extension.proposingCountry}
+                              </p>
+                              <p>
+                                <span className="font-medium">Additional Time:</span>{' '}
+                                {Math.floor(durationInSeconds / 60)}:{(durationInSeconds % 60).toString().padStart(2, '0')}
+                              </p>
+                              {speakingTimeInSeconds > 0 && (
+                                <p>
+                                  <span className="font-medium">Speaking Time:</span>{' '}
+                                  {Math.floor(speakingTimeInSeconds / 60)}:{(speakingTimeInSeconds % 60).toString().padStart(2, '0')} per speaker
+                                </p>
+                              )}
+                              {totalSpeakers > 0 && (
+                                <p>
+                                  <span className="font-medium">Total Speakers:</span> {totalSpeakers}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </Card>
               </div>
             )}

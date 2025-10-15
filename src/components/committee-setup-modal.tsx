@@ -27,15 +27,16 @@ import {
 import { Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,  // <-- Add this
-  CommandItem, } from "@/components/ui/command"
+  CommandInput,
+  CommandItem,
+  CommandList } from "@/components/ui/command"
 import Image from 'next/image'
 import { cn } from "@/lib/utils"
 
 type Portfolio = {
-  id: string        // country code
-  name: string      // country name
-  code?: string     // country code (optional for backward compatibility)
+  id: string
+  name: string
+  code?: string
   attendance?: 'present' | 'present-voting' | 'absent'
 }
 
@@ -121,6 +122,9 @@ export default function CommitteeSetupModal({
   const [portfolioSearchQuery, setPortfolioSearchQuery] = useState("")
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
   
+  const [countrySearchOpen, setCountrySearchOpen] = useState(false);
+  const [countrySearchInput, setCountrySearchInput] = useState("");
+  
   // Session Settings
   const [speakingTime, setSpeakingTime] = useState(120)
   const [enableMotions, setEnableMotions] = useState(true)
@@ -139,7 +143,28 @@ export default function CommitteeSetupModal({
   const [isCreating, setIsCreating] = useState(false)
   const router = useRouter()
 
-  // Auto-generate shortcode from committee name
+  const filteredCountries = useMemo(() => {
+    console.log("=== FILTERING COUNTRIES ===");
+    console.log("Input:", countrySearchInput);
+    console.log("Country list length:", countryList.length);
+    
+    if (!countrySearchInput.trim()) {
+      console.log("No search input, returning all countries");
+      return countryList;
+    }
+    
+    const query = countrySearchInput.toLowerCase();
+    const results = countryList.filter(country =>
+      country.name.toLowerCase().includes(query) ||
+      country.code.toLowerCase().includes(query)
+    );
+    
+    console.log("Filtered results:", results.length);
+    console.log("First 3 results:", results.slice(0, 3).map(c => c.name));
+    
+    return results;
+  }, [countrySearchInput]);
+
   const generateShortcode = (name: string) => {
     return name
       .split(' ')
@@ -164,50 +189,15 @@ export default function CommitteeSetupModal({
     return filtered.sort((a, b) => a.name.localeCompare(b.name))
   }, [portfolioSearchQuery, portfolios])
 
-  // Handle drag events
-  useEffect(() => {
-    const handleDragStart = (e: Event) => {
-      const customEvent = e as CustomEvent
-      setDraggedId(customEvent.detail)
-    }
-    const handleDragEnd = () => {
-      setDraggedId(null)
-      setDraggedOverId(null)
-    }
-    const handleDragEnter = (e: Event) => {
-      const customEvent = e as CustomEvent
-      setDraggedOverId(customEvent.detail)
-    }
-    const handleDragLeave = () => {
-      setDraggedOverId(null)
-    }
-
-    window.addEventListener('dragstart', handleDragStart)
-    window.addEventListener('dragend', handleDragEnd)
-    window.addEventListener('dragenter', handleDragEnter)
-    window.addEventListener('dragleave', handleDragLeave)
-
-    return () => {
-      window.removeEventListener('dragstart', handleDragStart)
-      window.removeEventListener('dragend', handleDragEnd)
-      window.removeEventListener('dragenter', handleDragEnter)
-      window.removeEventListener('dragleave', handleDragLeave)
-    }
-  }, [])
-
-
-
   const removePortfolio = (id: string) => {
     setPortfolios(portfolios.filter(p => p.id !== id))
   }
 
-  // Portfolio management simplified - drag and drop removed
   const handleExcelImport = async (file: File) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
 
-      // For now, let's just read the file as text and try to parse basic CSV
       const text = await file.text();
       const rows = text.split('\n');
       const countries = rows
@@ -215,7 +205,6 @@ export default function CommitteeSetupModal({
           const [name] = row.split(',');
           if (!name) return null;
           
-          // Find country code from name
           const country = countryList.find(c => 
             c.name.toLowerCase().includes(name.toLowerCase().trim())
           );
@@ -243,7 +232,6 @@ export default function CommitteeSetupModal({
       });
     } catch (error) {
       console.error('Error importing Excel file:', error);
-      // You might want to show an error message to the user here
     }
   };
 
@@ -371,7 +359,6 @@ export default function CommitteeSetupModal({
                         </div>
                       </div>
 
-
                       {/* Committee Agenda */}
                       <div className="space-y-2">
                         <Label htmlFor="agenda" className="text-sm font-medium">
@@ -388,7 +375,7 @@ export default function CommitteeSetupModal({
                     </>
                   )}
                   
-                      {currentPage === "members" && (
+                  {currentPage === "members" && (
                     <>
                       {/* Members Section */}
                       <div className="space-y-3">
@@ -400,69 +387,110 @@ export default function CommitteeSetupModal({
                         </div>
 
                         {/* Country Search Dropdown */}
-                        <div className="space-y-1.5">
-  <Label htmlFor="country-search" className="text-sm">
-    Search Countries
-  </Label>
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        role="combobox"
-        className="w-full justify-between h-9"
-      >
-        Search for a country...
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-      <Command>
-        <CommandInput placeholder="Search countries..." />
-        <CommandEmpty>No country found.</CommandEmpty>
-        <CommandGroup className="max-h-[300px] overflow-auto">
-          {countryList.map(country => {
-            const isAdded = portfolios.some(p => p.id === country.code);
-            return (
-              <CommandItem
-                key={country.code}
-                value={country.name}
-                onSelect={() => {
-                  if (!isAdded) {
-                    const portfolio = {
-                      id: country.code.toLowerCase(),
-                      code: country.code.toLowerCase(),
-                      name: country.name,
-                      attendance: 'present' as const
-                    };
-                    const newPortfolios = [...portfolios, portfolio];
-                    setPortfolios(newPortfolios.sort((a, b) => a.name.localeCompare(b.name)));
-                  }
-                }}
-                disabled={isAdded}
-                className={cn(
-                  "flex items-center gap-2",
-                  isAdded && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <Image
-                  src={`https://flagcdn.com/w20/${country.code.toLowerCase()}.png`}
-                  alt={`${country.name} flag`}
-                  width={20}
-                  height={15}
-                  className="object-cover rounded-sm"
-                />
-                <span>{country.name}</span>
-                {isAdded && (
-                  <span className="ml-auto text-xs text-muted-foreground">Added</span>
-                )}
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-      </Command>
-    </PopoverContent>
-  </Popover>
-</div>
+                        <div className="space-y-1.5 relative">
+                          <Label htmlFor="country-search" className="text-sm">
+                            Search Countries
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="country-search"
+                              type="text"
+                              placeholder="Type to search countries..."
+                              value={countrySearchInput}
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                console.log("Input onChange:", newValue);
+                                setCountrySearchInput(newValue);
+                                setCountrySearchOpen(true);
+                              }}
+                              onFocus={() => setCountrySearchOpen(true)}
+                              onKeyDown={(e) => {
+                                console.log("Key pressed:", e.key);
+                                if (e.key === 'Escape') {
+                                  setCountrySearchOpen(false);
+                                  setCountrySearchInput("");
+                                }
+                              }}
+                              className="h-9"
+                            />
+                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                          </div>
+                          
+                          {countrySearchOpen && (
+                            <>
+                              <div 
+                                className="fixed inset-0 z-40" 
+                                onClick={() => {
+                                  setCountrySearchOpen(false);
+                                  setCountrySearchInput("");
+                                }}
+                              />
+                              <div className="absolute z-50 w-full mt-1 border rounded-md shadow-lg bg-popover">
+                                <div className="max-h-[300px] overflow-y-auto">
+                                  <div className="p-2">
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                      Showing {filteredCountries.length} countries
+                                    </p>
+                                    {filteredCountries.length === 0 ? (
+                                      <div className="py-6 text-center text-sm text-muted-foreground">
+                                        {countrySearchInput.trim() ? "No countries match your search" : "Start typing to search"}
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        {filteredCountries.map(country => {
+                                          const isAdded = portfolios.some(p => p.id === country.code);
+                                          return (
+                                            <button
+                                              key={country.code}
+                                              type="button"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                console.log("Country button clicked:", country.name);
+                                                
+                                                if (!isAdded) {
+                                                  const portfolio = {
+                                                    id: country.code.toLowerCase(),
+                                                    code: country.code.toLowerCase(),
+                                                    name: country.name,
+                                                    attendance: 'present' as const
+                                                  };
+                                                  setPortfolios(prev => {
+                                                    const newPortfolios = [...prev, portfolio];
+                                                    return newPortfolios.sort((a, b) => a.name.localeCompare(b.name));
+                                                  });
+                                                  console.log("Added country:", country.name);
+                                                }
+                                              }}
+                                              disabled={isAdded}
+                                              className={cn(
+                                                "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left transition-colors",
+                                                !isAdded && "hover:bg-accent cursor-pointer",
+                                                isAdded && "opacity-50 cursor-not-allowed"
+                                              )}
+                                            >
+                                              <Image
+                                                src={`https://flagcdn.com/w20/${country.code.toLowerCase()}.png`}
+                                                alt={`${country.name} flag`}
+                                                width={20}
+                                                height={15}
+                                                className="object-cover rounded-sm"
+                                              />
+                                              <span className="flex-1">{country.name}</span>
+                                              {isAdded && (
+                                                <span className="text-xs text-muted-foreground">Added</span>
+                                              )}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        
                         <div className="flex items-center gap-2 mb-4">
                           <Button
                             variant="outline"
@@ -496,7 +524,8 @@ export default function CommitteeSetupModal({
                             </Tooltip>
                           </TooltipProvider>
                         </div>
-                        {/* Added Portfolios List - Full Width */}
+                        
+                        {/* Added Portfolios List */}
                         <div className="border rounded-lg bg-card overflow-hidden">
                           <ScrollArea className="h-[340px] overflow-y-scroll max-h-screen">
                             {filteredPortfolios.length === 0 ? (
@@ -827,15 +856,15 @@ export default function CommitteeSetupModal({
                         rapporteur: rapporteur.trim(),
                         countries: portfolios.map(portfolio => ({
                           name: portfolio.name,
-                          code: portfolio.id.toLowerCase(),  // Ensure lowercase for consistency
+                          code: portfolio.id.toLowerCase(),
                           attendance: 'present' as const
                         })),
                         countryList: portfolios.map(portfolio => ({
-                          id: portfolio.id.toLowerCase(),   // Ensure lowercase for consistency
+                          id: portfolio.id.toLowerCase(),
                           name: portfolio.name,
-                          code: portfolio.id.toLowerCase(), // Add code field
-                          flagQuery: portfolio.id.toLowerCase(), // Ensure lowercase for flags
-                          attendance: 'present' as const    // Add attendance field
+                          code: portfolio.id.toLowerCase(),
+                          flagQuery: portfolio.id.toLowerCase(),
+                          attendance: 'present' as const
                         })),
                         settings: {
                           enableMotions,

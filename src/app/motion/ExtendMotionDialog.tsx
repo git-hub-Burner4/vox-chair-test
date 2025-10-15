@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ChevronsUpDown, Check, X } from "lucide-react";
 import {
@@ -30,7 +29,7 @@ interface ExtendMotionDialogProps {
     additionalDuration: number,
     newSpeakingTime: number,
     proposingCountry: string,
-    passed: boolean  // ADD THIS
+    passed: boolean
   ) => void;
   countries: Array<{ name: string; code: string }>;
 }
@@ -105,23 +104,23 @@ export const ExtendMotionDialog = ({
   };
 
   const handleVoteComplete = (passed: boolean) => {
-  const additionalDurationInMinutes =
-    formData.duration.minutes + formData.duration.seconds / 60;
-  const newSpeakingTimeInSeconds = formData.useSameTimings
-    ? originalMotion?.speakingTime || 0
-    : formData.speakingTime.minutes * 60 + formData.speakingTime.seconds;
+    const additionalDurationInMinutes =
+      formData.duration.minutes + formData.duration.seconds / 60;
+    const newSpeakingTimeInSeconds = formData.useSameTimings
+      ? originalMotion?.speakingTime || 0
+      : formData.speakingTime.minutes * 60 + formData.speakingTime.seconds;
 
     onSubmit(
-    originalMotion.id,
-    additionalDurationInMinutes,
-    newSpeakingTimeInSeconds,
-    formData.proposingCountry,
-    passed  // PASS THE VOTE RESULT
-  );
+      originalMotion.id,
+      additionalDurationInMinutes,
+      newSpeakingTimeInSeconds,
+      formData.proposingCountry,
+      passed
+    );
 
     onOpenChange(false);
-  toast.success(passed ? "Motion extension passed" : "Motion extension failed");
-};
+    toast.success(passed ? "Motion extension passed" : "Motion extension failed");
+  };
 
   const formatDuration = () => {
     const { minutes, seconds } = formData.duration;
@@ -351,58 +350,35 @@ export const ExtendMotionDialog = ({
             </div>
           </form>
         ) : (
-          // Voting System (copied from VotingSystem.tsx)
-          <Card className="p-6 border-2 border-primary/20">
-            <div className="space-y-6">
-              <div className="pb-4 border-b space-y-3">
-                <div>
-                  <h2 className="text-2xl font-bold">Extension to {originalMotion?.name}</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Proposed by: {formData.proposingCountry}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <p className="text-sm font-medium text-primary">Additional Time</p>
-                    <p className="text-lg font-semibold">{formatDuration()}</p>
-                  </div>
-                  {(originalMotion?.type === "Moderated Caucus" || originalMotion?.type === "GSL") && (
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <p className="text-sm font-medium text-primary">Speaking Time</p>
-                      <p className="text-lg font-semibold">{formatSpeakingTime()}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <Button
-                    size="lg"
-                    className="h-24 text-lg bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => handleVoteComplete(true)}
-                  >
-                    <Check className="h-6 w-6 mr-2" />
-                    Pass Motion
-                  </Button>
-                  <Button
-                    size="lg"
-                    className="h-24 text-lg bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => handleVoteComplete(false)}
-                  >
-                    <X className="h-6 w-6 mr-2" />
-                    Fail Motion
-                  </Button>
-                </div>
-                
-                <Button
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="w-full"
-                >
-                  Cancel Vote
-                </Button>
-              </div>
+          // Simplified Voting View - Clean like image 2
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                size="lg"
+                className="h-20 text-base bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => handleVoteComplete(true)}
+              >
+                <Check className="h-5 w-5 mr-2" />
+                Pass
+              </Button>
+              <Button
+                size="lg"
+                className="h-20 text-base bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => handleVoteComplete(false)}
+              >
+                <X className="h-5 w-5 mr-2" />
+                Fail
+              </Button>
             </div>
-          </Card>
+            
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full"
+            >
+              Cancel Vote
+            </Button>
+          </div>
         )}
       </DialogContent>
     </Dialog>
