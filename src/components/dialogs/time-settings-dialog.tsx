@@ -23,7 +23,13 @@ export function TimeSettingsDialog({
   motions 
 }: TimeSettingsDialogProps) {
   const [timeInSeconds, setTimeInSeconds] = useState(currentTime);
-  const activeMotion = activeMotionId ? motions.find(m => m.id === activeMotionId) : null;
+
+  const handleSave = () => {
+  const minutes = Math.floor(timeInSeconds / 60);
+  const seconds = timeInSeconds % 60;
+  onSave(minutes, seconds, false);
+  onOpenChange(false);
+};
 
   useEffect(() => {
     if (open) {
@@ -54,16 +60,11 @@ export function TimeSettingsDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => {
-              const mins = Math.floor(timeInSeconds / 60);
-              const secs = timeInSeconds % 60;
-              onSave(mins, secs, false);
-              onOpenChange(false);
-            }}
-            className="flex-1 sm:flex-none bg-neutral-800 hover:bg-neutral-700 text-white"
-          >
-            Apply for Current Speaker
-          </Button>
+  onClick={handleSave}
+  className="flex-1 sm:flex-none bg-neutral-800 hover:bg-neutral-700 text-white"
+>
+  Apply for Current Speaker
+</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

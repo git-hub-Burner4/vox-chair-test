@@ -7,20 +7,19 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Vote } from "lucide-react";
-import { VotingDialog } from "@/components/shared/voting-dialog";
 
 interface MotionListProps {
   motions: Motion[];
   onVote: (motionId: string, votesFor: number, votesAgainst: number, abstentions: number) => void;
   onAdjournMotion: (motionId: string) => void;
-  onExtendMotion: (motion: Motion) => void;  // Changed from string to Motion
+  onExtendMotion: (motion: Motion) => void;
   onEditMotion: (motion: Motion) => void;
   onReorderMotions: (newOrder: Motion[]) => void;
   onStatusChange: (motionId: string, newStatus: "Pending" | "In Progress" | "Completed") => void;
   allMembers: Speaker[];
   currentSpeaker?: Speaker | null;
+  showMotionStatus?: boolean; // Add this line
 }
 
 const statusColors: Record<MotionStatus, string> = {
@@ -38,9 +37,10 @@ export const MotionList = ({
   onEditMotion,
   onReorderMotions,
   onStatusChange,
-  allMembers 
+  allMembers,
+  showMotionStatus = true  // Add this line with default value
 }: MotionListProps) => {
-  const [selectedMotion, setSelectedMotion] = useState<Motion | null>(null);
+
   const [filter, setFilter] = useState<MotionStatus | "All">("All");
   const [draggedMotion, setDraggedMotion] = useState<Motion | null>(null);
   const [dragOverMotionId, setDragOverMotionId] = useState<string | null>(null);
@@ -144,7 +144,9 @@ export const MotionList = ({
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h4 className="font-semibold text-lg">{motion.name}</h4>
-                      <Badge className={`${statusColors[motion.status]} font-medium shadow-sm px-3`}>{motion.status}</Badge>
+                      {showMotionStatus && (
+  <Badge className={`${statusColors[motion.status]} font-medium shadow-sm px-3`}>{motion.status}</Badge>
+)}
                     </div>
                     <div className="text-sm text-muted-foreground space-y-1">
                       <p>
@@ -202,24 +204,14 @@ export const MotionList = ({
                       </>
                     )}
                     {motion.status === "Pending" && (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => setSelectedMotion(motion)}
-                          className={`${motion.type === "Extension" ? "formal-btn" : ""}`}
-                        >
-                          <Vote className="mr-2 h-4 w-4" />
-                          Vote
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onEditMotion(motion)}
-                        >
-                          Edit
-                        </Button>
-                      </>
-                    )}
+  <Button
+    size="sm"
+    variant="outline"
+    onClick={() => onEditMotion(motion)}
+  >
+    Edit
+  </Button>
+)}
                   </div>
                 </div>
               </Card>
@@ -227,19 +219,6 @@ export const MotionList = ({
           )}
         </div>
       </Tabs>
-
-      <Dialog open={!!selectedMotion} onOpenChange={(open) => !open && setSelectedMotion(null)}>
-        <DialogContent className="sm:max-w-[400px]">
-          {selectedMotion && (
-            <VotingDialog
-              motion={selectedMotion}
-              isOpen={true}
-              onClose={() => setSelectedMotion(null)}
-              onVote={handleVoteComplete}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -636,31 +636,37 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Load committee settings and apply them
   useEffect(() => {
-    if (committee?.settings && !settingsLoaded) {
-      // Set default speaking time from committee settings
-      const defaultTime = committee.settings.speakingTime || 120;
-      setTimeInSeconds(defaultTime);
+  if (committee?.settings && !settingsLoaded) {
+    // Set default speaking time from committee settings
+    const defaultTime = committee.settings.speakingTime || 120;
+    
+    // Always set the default time
+    setTimeInSeconds(defaultTime);
+    
+    // Only initialize current/total time if nothing is running
+    if (!currentSpeaker && speakerQueue.length === 0 && !isRunning) {
       setTotalTime(defaultTime);
       setCurrentTime(defaultTime);
-      setSettingsLoaded(true); // Prevent re-applying settings
-      
-      // Set display preferences
-      setShowTimerDisplay(committee.settings.showTimer ?? true);
-      setShowSpeakerListDisplay(committee.settings.showSpeakerList ?? true);
-      setShowMotionsDisplay(committee.settings.showMotions ?? true);
-      
-      console.log('Applied committee settings:', {
-        speakingTime: defaultTime,
-        enableMotions: committee.settings.enableMotions,
-        enableVoting: committee.settings.enableVoting,
-        showTimer: committee.settings.showTimer,
-        showSpeakerList: committee.settings.showSpeakerList,
-        showMotions: committee.settings.showMotions
-      });
-      
-      toast.success(`Timer set to ${Math.floor(defaultTime / 60)}:${(defaultTime % 60).toString().padStart(2, '0')}`);
     }
-  }, [committee?.settings, settingsLoaded]);
+    
+    setSettingsLoaded(true);
+    
+    // Set display preferences
+    setShowTimerDisplay(committee.settings.showTimer ?? true);
+    setShowSpeakerListDisplay(committee.settings.showSpeakerList ?? true);
+    setShowMotionsDisplay(committee.settings.enableMotions ?? true);
+    setShowMotionStatusBadges(committee.settings.showMotions ?? true);
+    
+    console.log('Applied committee settings:', {
+      speakingTime: defaultTime,
+      enableMotions: committee.settings.enableMotions,
+      enableVoting: committee.settings.enableVoting,
+      showTimer: committee.settings.showTimer,
+      showSpeakerList: committee.settings.showSpeakerList,
+      showMotions: committee.settings.showMotions
+    });
+  }
+}, [committee?.settings, settingsLoaded, currentSpeaker, speakerQueue.length, isRunning]);
   
   // Motion state
   const [activeMotionId, setActiveMotionId] = useState<string | null>(null);
@@ -679,6 +685,7 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showTimerDisplay, setShowTimerDisplay] = useState(true);
   const [showSpeakerListDisplay, setShowSpeakerListDisplay] = useState(true);
   const [showMotionsDisplay, setShowMotionsDisplay] = useState(true);
+  const [showMotionStatusBadges, setShowMotionStatusBadges] = useState(true);
 
   // Timer settings function
   const updateTimerSettings = (motionToUse: Motion): void => {
@@ -753,11 +760,13 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
 
     // Handle normal case (no motion or non-proposer)
     if (!currentSpeaker && !isYielded) {
-      // Add as current speaker if position is empty
-      updateSpeakerState({ currentSpeaker: newSpeaker });
-      toast.success(`${speaker.name} added as current speaker`);
-      logSpeakerAdded(newSpeaker, 'current');
-    } else {
+  // Add as current speaker if position is empty
+  setTotalTime(timeInSeconds);  // Use default time
+  setCurrentTime(timeInSeconds);  // Use default time
+  updateSpeakerState({ currentSpeaker: newSpeaker });
+  toast.success(`${speaker.name} added as current speaker`);
+  logSpeakerAdded(newSpeaker, 'current');
+}else {
       // Add to queue
       const newQueue = [...speakerQueue, newSpeaker];
       updateSpeakerState({ queue: newQueue });
@@ -1185,18 +1194,18 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     const [nextSpeaker, ...remainingQueue] = speakerQueue;
     toast.info(`Next speaker: ${nextSpeaker.name}`);
     
-    // If the next speaker has yielded time, add it to their total time
+    // Calculate total time: use default time (timeInSeconds) + any yielded time
+    const speakerTotalTime = nextSpeaker.yieldedTime 
+      ? timeInSeconds + nextSpeaker.yieldedTime 
+      : timeInSeconds;
+    
+    setTotalTime(speakerTotalTime);
+    setCurrentTime(speakerTotalTime);
+    
     if (nextSpeaker.yieldedTime && nextSpeaker.yieldedTime > 0) {
-      const totalSpeakingTime = timeInSeconds + nextSpeaker.yieldedTime;
-      setTotalTime(totalSpeakingTime);
-      setCurrentTime(totalSpeakingTime);
-      
       const mins = Math.floor(nextSpeaker.yieldedTime / 60);
       const secs = nextSpeaker.yieldedTime % 60;
       toast.info(`Includes ${mins}:${secs.toString().padStart(2, '0')} yielded time`);
-    } else {
-      setTotalTime(timeInSeconds);
-      setCurrentTime(timeInSeconds);
     }
     
     setCurrentSpeaker(nextSpeaker);
@@ -1231,10 +1240,8 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
 };
 
   const handleYield = (speaker: Speaker) => {
-  // Show loading toast
   const toastId = toast.loading('Processing yield...');
   
-  // Validate yield conditions
   if (!currentSpeaker) {
     toast.dismiss(toastId);
     toast.error('Cannot yield: No current speaker');
@@ -1251,10 +1258,7 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     return;
   }
 
-  // Get the yielded time amount
   const yieldedTimeAmount = currentTime;
-  
-  // Find the speaker to yield to in the queue and get their index
   const yieldToIndex = speakerQueue.findIndex(s => s.code === speaker.code);
   
   if (yieldToIndex === -1) {
@@ -1263,17 +1267,14 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     return;
   }
 
-  // Create new speaker object with yielded time added
   const speakerWithYieldedTime = {
     ...speakerQueue[yieldToIndex],
     yieldedTime: (speakerQueue[yieldToIndex].yieldedTime || 0) + yieldedTimeAmount,
   };
 
-  // Update the queue: replace the speaker at yieldToIndex with updated speaker
   const updatedQueue = [...speakerQueue];
   updatedQueue[yieldToIndex] = speakerWithYieldedTime;
 
-  // Move to the next speaker (first in queue)
   let nextSpeaker: Speaker | null = null;
   let remainingQueue: Speaker[] = [];
 
@@ -1283,16 +1284,19 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     remainingQueue = rest;
   }
 
-  // Update states
+  // Use default time (timeInSeconds) + yielded time
+  const nextSpeakerTotalTime = nextSpeaker?.yieldedTime 
+    ? timeInSeconds + nextSpeaker.yieldedTime 
+    : timeInSeconds;
+
   setCurrentSpeaker(nextSpeaker);
   setSpeakerQueue(remainingQueue);
-  setCurrentTime(nextSpeaker?.yieldedTime ? totalTime + nextSpeaker.yieldedTime : totalTime);
+  setCurrentTime(nextSpeakerTotalTime);
+  setTotalTime(nextSpeakerTotalTime);
   setIsRunning(false);
 
-  // Log the yield action
   logSpeakerYield(currentSpeaker.name, speaker.name, yieldedTimeAmount);
   
-  // Update session storage
   const storedData = getSessionData();
   if (storedData) {
     updateSessionData({
@@ -1302,7 +1306,6 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     });
   }
   
-  // Show success toast
   toast.dismiss(toastId);
   const mins = Math.floor(yieldedTimeAmount / 60);
   const secs = yieldedTimeAmount % 60;
@@ -1311,7 +1314,7 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     if (nextSpeaker.yieldedTime && nextSpeaker.yieldedTime > 0) {
       const yieldedMins = Math.floor(nextSpeaker.yieldedTime / 60);
       const yieldedSecs = nextSpeaker.yieldedTime % 60;
-      toast.info(`${nextSpeaker.name} is now speaking (${totalTime + yieldedTimeAmount}s total: ${Math.floor(totalTime / 60)}m + ${yieldedMins}:${yieldedSecs})`);
+      toast.info(`${nextSpeaker.name} is now speaking (${nextSpeakerTotalTime}s total: ${Math.floor(timeInSeconds / 60)}m + ${yieldedMins}:${yieldedSecs})`);
     } else {
       toast.info(`Next speaker: ${nextSpeaker.name}`);
     }
@@ -1319,42 +1322,23 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
 }
 
   const handleSetTime = (minutes: number, seconds: number, updateMotion = false) => {
-    const newTime = minutes * 60 + seconds;
-    const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    toast.success(`Speaking time set to ${formattedTime}`);
-    
-    // Only update the time if there's no active motion, or we're explicitly updating a passed motion
-    if (!activeMotionId) {
-      setTotalTime(newTime);
-      setCurrentTime(newTime);
-      logTimingConfig(minutes, seconds);
-    } else if (updateMotion) {
-      // Find the active motion
-      const activeMotion = motions.find(m => m.id === activeMotionId);
-      if (activeMotion?.status === "In Progress") {
-        // Only allow time updates for in-progress motions
-        setMotions(prev => prev.map(motion => {
-          if (motion.id === activeMotionId) {
-            return {
-              ...motion,
-              speakingTime: newTime
-            }
-          }
-          return motion
-        }));
-        
-        setTotalTime(newTime);
-        setCurrentTime(newTime);
-        logTimingConfig(minutes, seconds);
-      }
-    }
-  }
+  const newTime = minutes * 60 + seconds;
+  const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  
+  // Update the default speaking time
+  setTimeInSeconds(newTime);
+  
+  logTimingConfig(minutes, seconds);
+  toast.success(`Default speaking time set to ${formattedTime}`);
+}
 
   const handleReset = () => {
-    setCurrentTime(totalTime)
-    setIsRunning(false)
-    toast.info("Timer reset");
-  }
+  // Reset to default time (timeInSeconds), not totalTime
+  setCurrentTime(timeInSeconds + (currentSpeaker?.yieldedTime || 0))
+  setTotalTime(timeInSeconds + (currentSpeaker?.yieldedTime || 0))
+  setIsRunning(false)
+  toast.info("Timer reset");
+}
 
   const handleStart = () => {
     const newIsRunning = !isRunning;
@@ -1477,30 +1461,33 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
       <div className="mx-auto max-w-7xl px-4 py-6">
         {/* Header with New Motion button and view toggle */}
         <div className="flex justify-between items-center mb-6">
-          <div className="flex gap-2">
-            <Button 
-              variant={view === 'timer' ? 'default' : 'outline'}
-              onClick={() => setView('timer')}
-            >
-              Timer
-            </Button>
-            <Button 
-              variant={view === 'motions' ? 'default' : 'outline'}
-              onClick={() => setView('motions')}
-            >
-              Motions
-            </Button>
-          </div>
-          <Button 
-  variant="outline"
-  onClick={() => setShowMotionForm(true)}
-  disabled={!committee?.settings?.enableMotions}
-  title={!committee?.settings?.enableMotions ? "Motions are disabled in committee settings" : undefined}
->
-  <Vote className="mr-2 h-4 w-4" />
-  New Motion
-</Button>
-        </div>
+  <div className="flex gap-2">
+    <Button 
+      variant={view === 'timer' ? 'default' : 'outline'}
+      onClick={() => setView('timer')}
+    >
+      Timer
+    </Button>
+    {committee?.settings?.enableMotions && (
+      <Button 
+        variant={view === 'motions' ? 'default' : 'outline'}
+        onClick={() => setView('motions')}
+      >
+        Motions
+      </Button>
+    )}
+  </div>
+  <Button 
+    variant="outline"
+    onClick={() => committee?.settings?.enableMotions && setShowMotionForm(true)}
+    disabled={!committee?.settings?.enableMotions}
+    className={!committee?.settings?.enableMotions ? "opacity-50 cursor-not-allowed" : ""}
+    title={!committee?.settings?.enableMotions ? "Motions are disabled in committee settings" : undefined}
+  >
+    <Vote className="mr-2 h-4 w-4" />
+    New Motion
+  </Button>
+</div>
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           {/* Main Content */}
@@ -1516,13 +1503,15 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
         yieldedTime={currentSpeaker?.yieldedTime || 0}
         showTimer={showTimerDisplay}
       />
-      <TimerControls
-        onYield={() => setYieldDialogOpen(true)}
-        onSettings={() => setTimeDialogOpen(true)}
-        onReset={handleReset}
-        onStart={handleStart}
-        isRunning={isRunning}
-      />
+      {showTimerDisplay && (
+        <TimerControls
+          onYield={() => setYieldDialogOpen(true)}
+          onSettings={() => setTimeDialogOpen(true)}
+          onReset={handleReset}
+          onStart={handleStart}
+          isRunning={isRunning}
+        />
+      )}
     </Card>
     {showSpeakerListDisplay ? (
       <div className="space-y-4">
@@ -1563,6 +1552,7 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
             onReorderMotions={() => {}}
             allMembers={allMembers}
             currentSpeaker={currentSpeaker}
+            showMotionStatus={showMotionStatusBadges}
           />
           {/* Display extension motions under their parent */}
           {motions.filter(m => m.type === "Extension" && m.parentMotionId).map(extension => {
@@ -1589,11 +1579,13 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h4 className="font-semibold text-lg">Extension to {parent.name}</h4>
-                      <Badge className={statusColors[extension.status] || "bg-secondary"}>
-                        {extension.status}
-                      </Badge>
-                    </div>
+  <h4 className="font-semibold text-lg">Extension to {parent.name}</h4>
+  {showMotionStatusBadges && (
+    <Badge className={statusColors[extension.status] || "bg-secondary"}>
+      {extension.status}
+    </Badge>
+  )}
+</div>
                     <div className="text-sm text-muted-foreground space-y-1">
                       <p>
                         <span className="font-medium">Proposed by:</span> {extension.proposingCountry}

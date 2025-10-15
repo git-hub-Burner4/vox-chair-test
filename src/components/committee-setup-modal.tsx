@@ -690,14 +690,14 @@ export default function CommitteeSetupModal({
                             </div>
 
                             <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                              <div className="space-y-1">
-                                <Label htmlFor="show-motions" className="text-sm font-medium cursor-pointer">
-                                  Show Motion Status
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                  Display active motions and their status
-                                </p>
-                              </div>
+  <div className="space-y-1">
+    <Label htmlFor="show-motions" className="text-sm font-medium cursor-pointer">
+      Show Motion Status Badges
+    </Label>
+    <p className="text-xs text-muted-foreground">
+      Display status badges on motion cards
+    </p>
+  </div>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div>
