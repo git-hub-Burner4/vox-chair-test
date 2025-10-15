@@ -35,13 +35,15 @@ function TimeDisplay({
   totalTime, 
   isRunning,
   motionTotalTime,
-  yieldedTime = 0  // ADD THIS PARAMETER
+  yieldedTime = 0,
+  showTimer = true
 }: { 
   currentTime: number; 
   totalTime: number; 
   isRunning: boolean;
   motionTotalTime?: number;
-  yieldedTime?: number;  // ADD THIS TYPE
+  yieldedTime?: number;
+  showTimer?: boolean;
 }) {
   const formatTime = (seconds: number, showHours = false) => {
     const isOvertime = seconds < 0;
@@ -83,6 +85,23 @@ function TimeDisplay({
   // Calculate total time including yielded time
   const displayTotalTime = totalTime + yieldedTime;
 
+  if (!showTimer) {
+  return (
+    <div className="relative text-center py-12">
+      <div className="flex flex-col items-center gap-2">
+        <div className="text-lg text-muted-foreground">
+          Timer display is hidden
+        </div>
+        {motionTotalTime && (
+          <div className="text-lg text-muted-foreground">
+            Total Time: {formatTime(motionTotalTime * 60, true)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+  
   return (
     <div className="relative text-center py-12">
       {/* LED Indicator */}
@@ -250,25 +269,25 @@ function CurrentSpeaker({
     setDraggedOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDraggedOver(false);
-    
-    const data = e.dataTransfer.getData('application/json');
-    if (!data) return;
+const handleDrop = (e: React.DragEvent) => {
+  e.preventDefault();
+  setDraggedOver(false);
+  
+  const data = e.dataTransfer.getData('application/json');
+  if (!data) return;
 
-    try {
-      const { speaker: droppedSpeaker, from, queueIndex } = JSON.parse(data);
-      
-      if (from === 'queue') {
-        // Queue speaker dropped on current speaker - swap them
-        onSwapWithQueue(droppedSpeaker, queueIndex);
-      }
-    } catch (err) {
-      console.error('Error processing drop:', err);
-      toast.error('Failed to swap speakers');
+  try {
+    const { speaker: droppedSpeaker, from, queueIndex } = JSON.parse(data);
+    
+    if (from === 'queue' && queueIndex !== undefined) {
+      // Queue speaker dropped on current speaker - swap them
+      onSwapWithQueue(droppedSpeaker, queueIndex);
     }
-  };
+  } catch (err) {
+    console.error('Error processing drop:', err);
+    toast.error('Failed to swap speakers');
+  }
+};
 
   if (!speaker) {
     return (
@@ -597,10 +616,12 @@ export default function SessionPage() {
       setAllMembers([]);
     }
   }, [committee]);  // Timer state
-  const [currentTime, setCurrentTime] = useState(60);
-  const [timeInSeconds, setTimeInSeconds] = useState(60);
-  const [totalTime, setTotalTime] = useState(60);
-  const [isRunning, setIsRunning] = useState(false);
+  
+  const [currentTime, setCurrentTime] = useState(120);
+const [timeInSeconds, setTimeInSeconds] = useState(120);
+const [totalTime, setTotalTime] = useState(120);
+const [isRunning, setIsRunning] = useState(false);
+const [settingsLoaded, setSettingsLoaded] = useState(false);  
   // Committee state
   const [committeeName, setCommitteeName] = useState("Editable Committee Name");
   
@@ -612,6 +633,34 @@ export default function SessionPage() {
       setTitle(sessionData.committeeInfo.name);
     }
   }, [setTitle]);
+
+  // Load committee settings and apply them
+  useEffect(() => {
+    if (committee?.settings && !settingsLoaded) {
+      // Set default speaking time from committee settings
+      const defaultTime = committee.settings.speakingTime || 120;
+      setTimeInSeconds(defaultTime);
+      setTotalTime(defaultTime);
+      setCurrentTime(defaultTime);
+      setSettingsLoaded(true); // Prevent re-applying settings
+      
+      // Set display preferences
+      setShowTimerDisplay(committee.settings.showTimer ?? true);
+      setShowSpeakerListDisplay(committee.settings.showSpeakerList ?? true);
+      setShowMotionsDisplay(committee.settings.showMotions ?? true);
+      
+      console.log('Applied committee settings:', {
+        speakingTime: defaultTime,
+        enableMotions: committee.settings.enableMotions,
+        enableVoting: committee.settings.enableVoting,
+        showTimer: committee.settings.showTimer,
+        showSpeakerList: committee.settings.showSpeakerList,
+        showMotions: committee.settings.showMotions
+      });
+      
+      toast.success(`Timer set to ${Math.floor(defaultTime / 60)}:${(defaultTime % 60).toString().padStart(2, '0')}`);
+    }
+  }, [committee?.settings, settingsLoaded]);
   
   // Motion state
   const [activeMotionId, setActiveMotionId] = useState<string | null>(null);
@@ -625,6 +674,11 @@ export default function SessionPage() {
   const [originalSpeaker, setOriginalSpeaker] = useState<Speaker | null>(null);
   const [originalQueue, setOriginalQueue] = useState<Speaker[]>([]);
   const [yieldedTime, setYieldedTime] = useState(0);
+
+  // Display settings from committee
+  const [showTimerDisplay, setShowTimerDisplay] = useState(true);
+  const [showSpeakerListDisplay, setShowSpeakerListDisplay] = useState(true);
+  const [showMotionsDisplay, setShowMotionsDisplay] = useState(true);
 
   // Timer settings function
   const updateTimerSettings = (motionToUse: Motion): void => {
@@ -714,28 +768,28 @@ export default function SessionPage() {
 
   // Motion handlers
   const handleMotionSubmit = (motion: Omit<Motion, "id" | "createdAt">) => {
-    // Check if motions are enabled
-    if (!committee?.settings?.enableMotions) {
-      toast.error("Motions are disabled in committee settings");
-      return;
-    }
+  // Check if motions are enabled (NOT voting)
+  if (!committee?.settings?.enableMotions) {
+    toast.error("Motions are disabled in committee settings");
+    return;
+  }
 
-    const newMotion: Motion = {
-      ...motion,
-      id: Math.random().toString(36).substring(7),
-      createdAt: new Date().toISOString(),
-      status: "Pending" // All motions start as pending
-    };
-    
-    setMotions(prev => [...prev, newMotion]);
-    setShowMotionForm(false);
-
-    // Switch to timer view for moderated caucus or GSL
-    if (motion.type === "Moderated Caucus" || motion.type === "GSL") {
-      setView('timer');
-      updateTimerSettings(newMotion);
-    }
+  const newMotion: Motion = {
+    ...motion,
+    id: Math.random().toString(36).substring(7),
+    createdAt: new Date().toISOString(),
+    status: "Pending"
   };
+  
+  setMotions(prev => [...prev, newMotion]);
+  setShowMotionForm(false);
+
+  // Switch to timer view for moderated caucus or GSL
+  if (motion.type === "Moderated Caucus" || motion.type === "GSL") {
+    setView('timer');
+    updateTimerSettings(newMotion);
+  }
+};
 
   // Function to handle motion status changes
   const handleMotionStatusChange = (motionId: string, newStatus: "Pending" | "In Progress" | "Completed") => {
@@ -1353,23 +1407,51 @@ export default function SessionPage() {
   };
 
   // Handler for moving current speaker to queue
-  const handleMoveCurrentToQueue = (currentSpeaker: Speaker, insertIndex: number) => {
+  const handleMoveCurrentToQueue = (currentSpeakerToMove: Speaker, insertIndex: number) => {
+  const targetSpeaker = speakerQueue[insertIndex];
+  
+  if (targetSpeaker) {
+    // There's a speaker at this position - perform a swap
     const newQueue = [...speakerQueue];
     
     // Keep the speaker's original ID without adding _queue_ suffix
     const speakerToInsert = {
-      ...currentSpeaker,
-      id: currentSpeaker.id.replace(/_queue_\d+$/, '') // Remove any existing _queue_ suffix
+      ...currentSpeakerToMove,
+      id: currentSpeakerToMove.id.replace(/_queue_\d+$/, '')
     };
     
-    // Insert at the specified position
-    newQueue.splice(insertIndex, 0, speakerToInsert);
+    // Replace the speaker at insertIndex with the current speaker
+    newQueue[insertIndex] = speakerToInsert;
     
-    // Clear current speaker
-    setCurrentSpeaker(null);
+    // Set the target speaker as the new current speaker
+    setCurrentSpeaker(targetSpeaker);
     setSpeakerQueue(newQueue);
     
     // Update session storage
+    const sessionData = getSessionData();
+    if (sessionData) {
+      updateSessionData({
+        ...sessionData,
+        currentSpeaker: targetSpeaker,
+        speakerQueue: newQueue,
+      });
+    }
+    
+    toast.success(`Swapped: ${targetSpeaker.name} is now speaking, ${currentSpeakerToMove.name} moved to position ${insertIndex + 1}`);
+  } else {
+    // No speaker at this position - just insert
+    const newQueue = [...speakerQueue];
+    
+    const speakerToInsert = {
+      ...currentSpeakerToMove,
+      id: currentSpeakerToMove.id.replace(/_queue_\d+$/, '')
+    };
+    
+    newQueue.splice(insertIndex, 0, speakerToInsert);
+    
+    setCurrentSpeaker(null);
+    setSpeakerQueue(newQueue);
+    
     const sessionData = getSessionData();
     if (sessionData) {
       updateSessionData({
@@ -1379,13 +1461,14 @@ export default function SessionPage() {
       });
     }
     
-    toast.success(`${currentSpeaker.name} moved to queue position ${insertIndex + 1}`);
-  };
+    toast.success(`${currentSpeakerToMove.name} moved to queue position ${insertIndex + 1}`);
+  }
+};
 
   const availableForYield = allMembers.filter(
     (m) => m.id !== currentSpeaker?.id
   )
-  
+
   // Get available speakers based on attendance status
   // Available speakers are now handled by SpeakerAttendance component
 
@@ -1409,127 +1492,142 @@ export default function SessionPage() {
             </Button>
           </div>
           <Button 
-            variant="outline"
-            onClick={() => setShowMotionForm(true)}
-            disabled={!committee?.settings?.enableMotions}
-            title={!committee?.settings?.enableMotions ? "Motions are disabled in committee settings" : undefined}
-          >
-            <Vote className="mr-2 h-4 w-4" />
-            New Motion
-          </Button>
+  variant="outline"
+  onClick={() => setShowMotionForm(true)}
+  disabled={!committee?.settings?.enableMotions}
+  title={!committee?.settings?.enableMotions ? "Motions are disabled in committee settings" : undefined}
+>
+  <Vote className="mr-2 h-4 w-4" />
+  New Motion
+</Button>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           {/* Main Content */}
           <div>
-            {view === 'timer' ? (
-              <>
-                <Card className="p-8 mb-6">
-                  <TimeDisplay 
-                    currentTime={currentTime} 
-                    totalTime={activeMotionId ? (motions.find(m => m.id === activeMotionId)?.speakingTime || totalTime) : totalTime} 
-                    isRunning={isRunning}
-                    motionTotalTime={activeMotionId ? motions.find(m => m.id === activeMotionId)?.duration ?? 0 : undefined}
-                    yieldedTime={currentSpeaker?.yieldedTime || 0}  // ADD THIS LINE
-                  />
-                  <TimerControls
-                    onYield={() => setYieldDialogOpen(true)}
-                    onSettings={() => setTimeDialogOpen(true)}
-                    onReset={handleReset}
-                    onStart={handleStart}
-                    isRunning={isRunning}
-                  />
-                </Card>
-                <div className="space-y-4">
-                  <CurrentSpeaker 
-                    speaker={currentSpeaker} 
-                    onNext={handleNextSpeaker}
-                    isYielded={isYielded}
-                    originalSpeaker={originalSpeaker}
-                    yieldedTime={yieldedTime}
-                    onSwapWithQueue={handleSwapCurrentWithQueue}
-                  />
-                  <UpcomingSpeakers 
-                    speakers={isYielded ? originalQueue : speakerQueue} 
-                    onRemove={handleRemoveSpeaker}
-                    onReorder={handleReorderSpeakers}
-                    currentSpeaker={currentSpeaker}
-                    onMoveCurrentToQueue={handleMoveCurrentToQueue}
-                  />
+{view === 'timer' ? (
+  <>
+    <Card className="p-8 mb-6">
+      <TimeDisplay 
+        currentTime={currentTime} 
+        totalTime={activeMotionId ? (motions.find(m => m.id === activeMotionId)?.speakingTime || totalTime) : totalTime} 
+        isRunning={isRunning}
+        motionTotalTime={activeMotionId ? motions.find(m => m.id === activeMotionId)?.duration ?? 0 : undefined}
+        yieldedTime={currentSpeaker?.yieldedTime || 0}
+        showTimer={showTimerDisplay}
+      />
+      <TimerControls
+        onYield={() => setYieldDialogOpen(true)}
+        onSettings={() => setTimeDialogOpen(true)}
+        onReset={handleReset}
+        onStart={handleStart}
+        isRunning={isRunning}
+      />
+    </Card>
+    {showSpeakerListDisplay ? (
+      <div className="space-y-4">
+        <CurrentSpeaker 
+          speaker={currentSpeaker} 
+          onNext={handleNextSpeaker}
+          isYielded={isYielded}
+          originalSpeaker={originalSpeaker}
+          yieldedTime={yieldedTime}
+          onSwapWithQueue={handleSwapCurrentWithQueue}
+        />
+        <UpcomingSpeakers 
+          speakers={isYielded ? originalQueue : speakerQueue} 
+          onRemove={handleRemoveSpeaker}
+          onReorder={handleReorderSpeakers}
+          currentSpeaker={currentSpeaker}
+          onMoveCurrentToQueue={handleMoveCurrentToQueue}
+        />
+      </div>
+    ) : (
+      <Card className="p-8 text-center text-muted-foreground">
+        Speaker list display is hidden
+      </Card>
+    )}
+  </>
+) : (
+  <div>
+    {showMotionsDisplay ? (
+      <>
+        <Card className="mb-6">
+          <MotionList
+            motions={motions.filter(m => !m.parentMotionId || m.type !== "Extension")}
+            onVote={handleMotionVote}
+            onAdjournMotion={handleAdjournMotion}
+            onStatusChange={handleMotionStatusChange}
+            onExtendMotion={handleExtendMotion}
+            onEditMotion={() => {}}
+            onReorderMotions={() => {}}
+            allMembers={allMembers}
+            currentSpeaker={currentSpeaker}
+          />
+          {/* Display extension motions under their parent */}
+          {motions.filter(m => m.type === "Extension" && m.parentMotionId).map(extension => {
+            const parent = motions.find(m => m.id === extension.parentMotionId);
+            if (!parent) return null;
+            
+            // Calculate time values
+            const durationInSeconds = Math.round((extension.duration || 0) * 60);
+            const speakingTimeInSeconds = extension.speakingTime || 0;
+            const totalSpeakers = speakingTimeInSeconds > 0 
+              ? Math.floor(durationInSeconds / speakingTimeInSeconds)
+              : 0;
+            
+            // Status colors matching MotionList.tsx
+            const statusColors: Record<string, string> = {
+              "Pending": "bg-warning text-warning-foreground",
+              "In Progress": "bg-primary text-primary-foreground",
+              "Passed": "bg-success text-success-foreground",
+              "Failed": "bg-destructive text-destructive-foreground",
+            };
+            
+            return (
+              <Card key={extension.id} className="p-5 mx-4 mb-3 flex flex-col gap-4 pb-4 max-w-[95%] hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h4 className="font-semibold text-lg">Extension to {parent.name}</h4>
+                      <Badge className={statusColors[extension.status] || "bg-secondary"}>
+                        {extension.status}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p>
+                        <span className="font-medium">Proposed by:</span> {extension.proposingCountry}
+                      </p>
+                      <p>
+                        <span className="font-medium">Additional Time:</span>{' '}
+                        {Math.floor(durationInSeconds / 60)}:{(durationInSeconds % 60).toString().padStart(2, '0')}
+                      </p>
+                      {speakingTimeInSeconds > 0 && (
+                        <p>
+                          <span className="font-medium">Speaking Time:</span>{' '}
+                          {Math.floor(speakingTimeInSeconds / 60)}:{(speakingTimeInSeconds % 60).toString().padStart(2, '0')} per speaker
+                        </p>
+                      )}
+                      {totalSpeakers > 0 && (
+                        <p>
+                          <span className="font-medium">Total Speakers:</span> {totalSpeakers}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <div>
-                <Card className="mb-6">
-                  <MotionList
-                    motions={motions.filter(m => !m.parentMotionId || m.type !== "Extension")} // Show base motions
-                    onVote={handleMotionVote}
-                    onAdjournMotion={handleAdjournMotion}
-                    onStatusChange={handleMotionStatusChange}
-                    onExtendMotion={handleExtendMotion}
-                    onEditMotion={() => {}}
-                    onReorderMotions={() => {}}
-                    allMembers={allMembers}
-                    currentSpeaker={currentSpeaker}
-                  />
-                  {/* Display extension motions under their parent */}
-                  {motions.filter(m => m.type === "Extension" && m.parentMotionId).map(extension => {
-                    const parent = motions.find(m => m.id === extension.parentMotionId);
-                    if (!parent) return null;
-                    
-                    // Calculate time values
-                    const durationInSeconds = Math.round((extension.duration || 0) * 60);
-                    const speakingTimeInSeconds = extension.speakingTime || 0;
-                    const totalSpeakers = speakingTimeInSeconds > 0 
-                      ? Math.floor(durationInSeconds / speakingTimeInSeconds)
-                      : 0;
-                    
-                    // Status colors matching MotionList.tsx
-                    const statusColors: Record<string, string> = {
-                      "Pending": "bg-warning text-warning-foreground",
-                      "In Progress": "bg-primary text-primary-foreground",
-                      "Passed": "bg-success text-success-foreground",
-                      "Failed": "bg-destructive text-destructive-foreground",
-                    };
-                    
-                    return (
-                      <Card key={extension.id} className="p-5 mx-4 mb-3 flex flex-col gap-4 pb-4 max-w-[95%] hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h4 className="font-semibold text-lg">Extension to {parent.name}</h4>
-                              <Badge className={statusColors[extension.status] || "bg-secondary"}>
-                                {extension.status}
-                              </Badge>
-                            </div>
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              <p>
-                                <span className="font-medium">Proposed by:</span> {extension.proposingCountry}
-                              </p>
-                              <p>
-                                <span className="font-medium">Additional Time:</span>{' '}
-                                {Math.floor(durationInSeconds / 60)}:{(durationInSeconds % 60).toString().padStart(2, '0')}
-                              </p>
-                              {speakingTimeInSeconds > 0 && (
-                                <p>
-                                  <span className="font-medium">Speaking Time:</span>{' '}
-                                  {Math.floor(speakingTimeInSeconds / 60)}:{(speakingTimeInSeconds % 60).toString().padStart(2, '0')} per speaker
-                                </p>
-                              )}
-                              {totalSpeakers > 0 && (
-                                <p>
-                                  <span className="font-medium">Total Speakers:</span> {totalSpeakers}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </Card>
-              </div>
-            )}
+              </Card>
+            );
+          })}
+        </Card>
+      </>
+    ) : (
+      <Card className="p-8 text-center text-muted-foreground mb-6">
+        Motion display is hidden by committee settings
+      </Card>
+    )}
+  </div>
+)}
             
             <Dialog open={showMotionForm} onOpenChange={setShowMotionForm}>
               <DialogContent className="sm:max-w-[425px]" showCloseButton={false} title="New Motion">

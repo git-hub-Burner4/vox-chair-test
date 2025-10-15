@@ -71,11 +71,11 @@ export const MotionForm = ({ committeeId, onSubmit, onCancel }: MotionFormProps)
     }
 
     // Check if motions are enabled
-    if (!committee.settings?.enableMotions) {
-      toast.error("Motions are disabled in committee settings");
-      onCancel();
-      return;
-    }
+if (committee.settings && committee.settings.enableMotions === false) {
+  toast.error("Motions are disabled in committee settings");
+  onCancel();
+  return;
+}
 
     // Get only present and present-voting countries
     const activeCountries = committee.countryList

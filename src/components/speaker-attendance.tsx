@@ -70,7 +70,7 @@ export function SpeakerAttendance({
             code: country.code,
             name: country.name,
             flagQuery: country.code.toLowerCase(),
-            attendance: 'present' // Default to present
+            attendance: 'absent' // Default to present
           });
         }
       });
