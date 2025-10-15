@@ -1,12 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { CommitteeSessionData, Speaker } from '@/types/session';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Don't create client at module level - create it in each function
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  
+  return createSupabaseClient(supabaseUrl, supabaseKey);
+}
 
 export async function saveSession(sessionData: CommitteeSessionData) {
+  const supabase = getSupabaseClient();
+  
   try {
     // First save or update the main session data
     const { data: session, error: sessionError } = await supabase
@@ -102,6 +111,8 @@ export async function saveSession(sessionData: CommitteeSessionData) {
 }
 
 export async function loadSession(sessionId: string): Promise<CommitteeSessionData> {
+  const supabase = getSupabaseClient();
+  
   try {
     // Load main session data
     const { data: session, error: sessionError } = await supabase
@@ -184,6 +195,8 @@ export async function loadSession(sessionId: string): Promise<CommitteeSessionDa
 }
 
 export async function deleteSession(sessionId: string) {
+  const supabase = getSupabaseClient();
+  
   try {
     const { error } = await supabase
       .from('committee_sessions')
@@ -198,6 +211,8 @@ export async function deleteSession(sessionId: string) {
 }
 
 export async function listSessions() {
+  const supabase = getSupabaseClient();
+  
   try {
     const { data, error } = await supabase
       .from('committee_sessions')

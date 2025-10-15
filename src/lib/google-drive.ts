@@ -1,10 +1,20 @@
 import { google } from 'googleapis';
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Don't create client at module level - create it in each function
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error(
+      'Missing Supabase environment variables. ' +
+      'Required: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY'
+    );
+  }
+  
+  return createSupabaseClient(supabaseUrl, supabaseServiceKey);
+}
 
 export interface DriveTokens {
   access_token: string;
@@ -38,6 +48,7 @@ export function createDriveClient(tokens: DriveTokens) {
   // Handle token refresh
   oauth2Client.on('tokens', async (newTokens) => {
     if (newTokens.refresh_token) {
+      const supabase = getSupabaseClient();
       // Update tokens in database
       await supabase
         .from('user_google_drive')
@@ -58,6 +69,8 @@ export function createDriveClient(tokens: DriveTokens) {
  * Get user's Drive tokens from database
  */
 export async function getUserDriveTokens(userId: string): Promise<DriveTokens | null> {
+  const supabase = getSupabaseClient();
+  
   const { data, error } = await supabase
     .from('user_google_drive')
     .select('access_token, refresh_token, token_expiry, scope')
@@ -83,6 +96,8 @@ export async function storeDriveTokens(
     scope: string;
   }
 ) {
+  const supabase = getSupabaseClient();
+  
   const { error } = await supabase
     .from('user_google_drive')
     .upsert({
@@ -176,6 +191,8 @@ export async function storeCommitteeFolders(
   committeeId: string,
   folderInfo: DriveFolderInfo
 ) {
+  const supabase = getSupabaseClient();
+  
   const { error } = await supabase
     .from('committee_drive_folders')
     .upsert({
@@ -195,6 +212,8 @@ export async function storeCommitteeFolders(
  * Get committee folder info from database
  */
 export async function getCommitteeFolders(userId: string, committeeId: string) {
+  const supabase = getSupabaseClient();
+  
   const { data, error } = await supabase
     .from('committee_drive_folders')
     .select('folder_id, documents_folder_id')
@@ -261,6 +280,8 @@ export async function deleteFileFromDrive(drive: ReturnType<typeof createDriveCl
  * Get root folder ID for user
  */
 export async function getRootFolderId(userId: string): Promise<string | null> {
+  const supabase = getSupabaseClient();
+  
   const { data, error } = await supabase
     .from('user_google_drive')
     .select('root_folder_id')
@@ -288,6 +309,8 @@ export async function storeDocumentMetadata(
     webViewLink?: string;
   }
 ) {
+  const supabase = getSupabaseClient();
+  
   const { error } = await supabase
     .from('committee_documents')
     .insert({
@@ -309,6 +332,8 @@ export async function storeDocumentMetadata(
  * Get documents for a committee
  */
 export async function getCommitteeDocuments(userId: string, committeeId: string) {
+  const supabase = getSupabaseClient();
+  
   const { data, error } = await supabase
     .from('committee_documents')
     .select('*')
@@ -327,6 +352,8 @@ export async function getCommitteeDocuments(userId: string, committeeId: string)
  * Delete document metadata from database
  */
 export async function deleteDocumentMetadata(userId: string, documentId: string) {
+  const supabase = getSupabaseClient();
+  
   const { data, error } = await supabase
     .from('committee_documents')
     .delete()
