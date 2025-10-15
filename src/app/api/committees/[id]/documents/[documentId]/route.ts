@@ -7,6 +7,42 @@ import {
   deleteFileFromDrive,
 } from '@/lib/google-drive';
 
+export const dynamic = 'force-dynamic'
+
+import { createClient } from '@/lib/supabase/server' // or wherever your server.ts is
+import { NextResponse } from 'next/server'
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string; documentId: string } }
+) {
+  try {
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', params.documentId)
+      .eq('committee_id', params.id)
+      .single()
+
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error fetching document:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; documentId: string }> }
