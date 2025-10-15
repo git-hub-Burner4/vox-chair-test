@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -7,10 +9,6 @@ import {
   deleteFileFromDrive,
 } from '@/lib/google-drive';
 
-export const dynamic = 'force-dynamic'
-
-import { createClient } from '@/lib/supabase/server' // or wherever your server.ts is
-import { NextResponse } from 'next/server'
 
 export async function GET(
   request: Request,
