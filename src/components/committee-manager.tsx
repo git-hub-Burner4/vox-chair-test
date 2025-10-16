@@ -42,7 +42,8 @@ export interface Committee {
     recordSession: boolean;
     autoSaveDrafts: boolean;
     notificationsEnabled: boolean;
-    speakingTime: number; // ← ADD THIS LINE
+    speakingTime: number;
+    theme?: string;
   };
 }
 

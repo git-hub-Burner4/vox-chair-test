@@ -22,6 +22,14 @@ export type CommitteeSessionData = {
   settings?: {
     enableMotions: boolean;
     enableVoting: boolean;
+    showTimer?: boolean;
+    showSpeakerList?: boolean;
+    showMotions?: boolean;
+    recordSession?: boolean;
+    autoSaveDrafts?: boolean;
+    notificationsEnabled?: boolean;
+    speakingTime?: number;
+    theme?: string;
   };
 };
 

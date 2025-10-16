@@ -92,24 +92,37 @@ export default function CommitteeSetupModal({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSetupComplete: (data: {
+onSetupComplete: (data: {
+  name: string
+  abbrev: string
+  agenda: string
+  chair: string
+  coChair: string
+  rapporteur: string
+  countries: Array<{
     name: string
-    abbrev: string
-    agenda: string
-    chair: string
-    coChair: string
-    rapporteur: string
-    countries: Array<{
-      name: string
-      code: string
-      attendance: 'present' | 'absent' | 'present-voting'
-    }>
-    countryList: Array<{
-      id: string
-      name: string
-      flagQuery: string
-    }>
-  }) => void
+    code: string
+    attendance: 'present' | 'absent' | 'present-voting'
+  }>
+  countryList: Array<{
+    id: string
+    name: string
+    flagQuery: string
+  }>
+  settings: {
+    enableMotions: boolean
+    enableVoting: boolean
+    showTimer: boolean
+    showSpeakerList: boolean
+    showMotions: boolean
+    recordSession: boolean
+    autoSaveDrafts: boolean
+    notificationsEnabled: boolean
+    speakingTime: number
+    theme: string
+  }
+}) => void
+
 }) {
   const [currentPage, setCurrentPage] = useState<"basic-info" | "members" | "session" | "display" | "advanced">("basic-info")
   const [committeeName, setCommitteeName] = useState("")
@@ -878,39 +891,39 @@ export default function CommitteeSetupModal({
                     try {
                       setIsCreating(true);
                       const committeeData = {
-                        name: committeeName.trim(),
-                        abbrev: shortcode.trim(),
-                        agenda: agenda.trim(),
-                        chair: chair.trim(),
-                        coChair: coChair.trim(),
-                        rapporteur: rapporteur.trim(),
-                        countries: portfolios.map(portfolio => ({
-                          name: portfolio.name,
-                          code: portfolio.id.toLowerCase(),
-                          attendance: 'present' as const
-                        })),
-                        countryList: portfolios.map(portfolio => ({
-  id: portfolio.id.toLowerCase(),
-  name: portfolio.name,
-  code: portfolio.id.toLowerCase(),
-  flagQuery: portfolio.id.toLowerCase(),
-  attendance: 'present' as const
-})),
-settings: {
-  theme: theme,
-                          enableMotions,
-                          enableVoting,
-                          showTimer,
-                          showSpeakerList,
-                          showMotions,
-                          recordSession,
-                          autoSaveDrafts,
-                          notificationsEnabled,
-                          speakingTime
-                        }
-                      };
-                      
-                      await onSetupComplete(committeeData);
+  name: committeeName.trim(),
+  abbrev: shortcode.trim(),
+  agenda: agenda.trim(),
+  chair: chair.trim(),
+  coChair: coChair.trim(),
+  rapporteur: rapporteur.trim(),
+  countries: portfolios.map(portfolio => ({
+    name: portfolio.name,
+    code: portfolio.id.toLowerCase(),
+    attendance: 'present' as const
+  })),
+  countryList: portfolios.map(portfolio => ({
+    id: portfolio.id.toLowerCase(),
+    name: portfolio.name,
+    code: portfolio.id.toLowerCase(),
+    flagQuery: portfolio.id.toLowerCase(),
+    attendance: 'present' as const
+  })),
+  settings: {
+    enableMotions,
+    enableVoting,
+    showTimer,
+    showSpeakerList,
+    showMotions,
+    recordSession,
+    autoSaveDrafts,
+    notificationsEnabled,
+    speakingTime,
+    theme  // ADD THIS LINE
+  }
+};
+
+await onSetupComplete(committeeData);
 
 // Store theme in session storage
 if (typeof window !== 'undefined') {

@@ -634,36 +634,21 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     }
   }, [setTitle]);
 
-  // Apply theme on mount
-// In page.tsx, replace the theme useEffect with this:
-
 // Apply theme on mount
 useEffect(() => {
-  console.log("=== Theme Debug ===");
-  console.log("Committee:", committee);
-  console.log("Committee settings:", committee?.settings);
-  console.log("Theme value:", committee?.settings?.theme);
-  
   if (committee?.settings?.theme) {
     const themeName = committee.settings.theme;
     const themeClass = `theme-${themeName}`;
     
-    console.log("Applying theme:", themeClass);
-    
     // Remove all theme classes
     Array.from(document.documentElement.classList).forEach(cls => {
       if (cls.startsWith('theme-')) {
-        console.log("Removing class:", cls);
         document.documentElement.classList.remove(cls);
       }
     });
     
     // Add new theme class
     document.documentElement.classList.add(themeClass);
-    console.log("Added class:", themeClass);
-    console.log("Final classes:", Array.from(document.documentElement.classList));
-  } else {
-    console.log("No theme found in committee settings");
   }
 }, [committee?.settings?.theme]);
 

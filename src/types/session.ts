@@ -33,6 +33,6 @@ export interface CommitteeSessionData {
     showSpeakerList?: boolean;
     showMotions?: boolean;
     speakingTime?: number;
-    theme?: string;
+    theme?: string;  // ADD THIS LINE
   };
 }
