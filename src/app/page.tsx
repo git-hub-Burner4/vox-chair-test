@@ -1,39 +1,53 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Clock, Layout, Folder } from "lucide-react"
+import { Plus, Clock, Layout, Folder, Loader2 } from "lucide-react"
 import { useCommittee } from "@/lib/committee-context"
-import { SetupNewCommittee } from "@/components/setup-committee"
 import CommitteeSetupModal from "@/components/committee-setup-modal"
 import { logSessionStart } from "@/lib/logging"
 import { saveCommittee } from "@/lib/session-storage"
+import { 
+  getRecentCommittees, 
+  saveCommitteeToDatabase,
+  updateCommitteeAccess,
+  getCommitteeById 
+} from "@/lib/supabase/committees"
 
-// Mock data - replace with actual data later
-const recentCommittees = [
-  { id: 1, name: "Security Council", members: 15, lastAccessed: "2 hours ago" },
-  { id: 2, name: "General Assembly", members: 193, lastAccessed: "1 day ago" },
-  { id: 3, name: "Human Rights Council", members: 47, lastAccessed: "3 days ago" },
-]
-
+// Mock templates - these could also come from database if needed
 const templates = [
   { id: 1, name: "UN Security Council", members: 15, description: "Standard UN Security Council setup" },
   { id: 2, name: "Small Committee", members: 10, description: "For smaller discussion groups" },
   { id: 3, name: "Large Assembly", members: 50, description: "For large-scale simulations" },
 ]
 
-const myCommittees = [
-  { id: 1, name: "ECOSOC 2024", members: 54, created: "Jan 15, 2025" },
-  { id: 2, name: "DISEC Session", members: 25, created: "Feb 20, 2025" },
-  { id: 3, name: "Custom MUN", members: 30, created: "Mar 5, 2025" },
-]
-
 export default function Page() {
   const [setupModalOpen, setSetupModalOpen] = useState(false)
+  const [recentCommittees, setRecentCommittees] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const { setCommittee } = useCommittee()
+  const router = useRouter()
 
-  const handleSetupComplete = (data: {
+  // Load recent committees on mount
+  useEffect(() => {
+    loadRecentCommittees()
+  }, [])
+
+  const loadRecentCommittees = async () => {
+    setIsLoading(true)
+    try {
+      const committees = await getRecentCommittees(6)
+      setRecentCommittees(committees)
+    } catch (error) {
+      console.error('Error loading recent committees:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSetupComplete = async (data: {
     name: string
     abbrev: string
     agenda: string
@@ -42,11 +56,27 @@ export default function Page() {
     rapporteur: string
     countries: Array<{ name: string; code: string; attendance: 'present' | 'absent' | 'present-voting' }>
     countryList: Array<{ id: string; name: string; flagQuery: string }>
+    settings?: any
   }) => {
     try {
       console.log('Setting up committee with data:', data);
+      
+      // Save to Supabase
+      const savedCommittee = await saveCommitteeToDatabase(
+        {
+          name: data.name,
+          abbrev: data.abbrev,
+          agenda: data.agenda,
+          chair: data.chair,
+          coChair: data.coChair,
+          rapporteur: data.rapporteur,
+          settings: data.settings || {}
+        },
+        data.countries
+      );
+
       const committeeData = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: savedCommittee.committee_id,
         name: data.name,
         abbrev: data.abbrev,
         agenda: data.agenda,
@@ -74,10 +104,36 @@ export default function Page() {
       saveCommittee(committeeData);
       setCommittee(committeeData);
 
+      // Reload recent committees
+      await loadRecentCommittees();
+
+      // Navigate to speaker list
+      router.push(`/speaker-list?committee=${savedCommittee.committee_id}`);
     } catch (error) {
       console.error('Error setting up committee:', error);
+      alert('Failed to create committee. Please try again.');
     }
     setSetupModalOpen(false)
+  }
+
+  const handleCommitteeClick = async (committeeId: string) => {
+    try {
+      // Update last accessed time
+      await updateCommitteeAccess(committeeId);
+      
+      // Load full committee data
+      const fullCommittee = await getCommitteeById(committeeId);
+      
+      // Set in context and session storage
+      saveCommittee(fullCommittee);
+      setCommittee(fullCommittee);
+      
+      // Navigate to speaker list
+      router.push(`/speaker-list?committee=${committeeId}`);
+    } catch (error) {
+      console.error('Error loading committee:', error);
+      alert('Failed to load committee. Please try again.');
+    }
   }
 
   return (
@@ -106,19 +162,47 @@ export default function Page() {
             <Clock className="h-5 w-5 text-muted-foreground" />
             <h2 className="text-2xl font-semibold">Recent Committees</h2>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {recentCommittees.map((committee) => (
-              <Card key={committee.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <CardTitle>{committee.name}</CardTitle>
-                  <CardDescription>{committee.members} members</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">Last accessed: {committee.lastAccessed}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : recentCommittees.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium text-muted-foreground mb-2">No recent committees</p>
+                <p className="text-sm text-muted-foreground mb-4">Create your first committee to get started</p>
+                <Button onClick={() => setSetupModalOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Committee
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {recentCommittees.map((committee) => (
+                <Card 
+                  key={committee.id} 
+                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => handleCommitteeClick(committee.id)}
+                >
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>{committee.name}</span>
+                      <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded">
+                        {committee.abbrev}
+                      </span>
+                    </CardTitle>
+                    <CardDescription>{committee.members} members</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">Last accessed: {committee.lastAccessed}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Templates Section */}
@@ -136,27 +220,6 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">{template.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* My Committees Section */}
-        <section className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Folder className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-2xl font-semibold">My Committees</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {myCommittees.map((committee) => (
-              <Card key={committee.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <CardTitle>{committee.name}</CardTitle>
-                  <CardDescription>{committee.members} members</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">Created: {committee.created}</p>
                 </CardContent>
               </Card>
             ))}

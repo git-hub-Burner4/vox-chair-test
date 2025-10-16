@@ -814,48 +814,43 @@ export default function CommitteeSetupModal({
                 </Button>
                 <Button 
                   onClick={async () => {
-                    try {
-                      setIsCreating(true);
-                      const committeeData = {
-                        name: committeeName.trim(),
-                        abbrev: shortcode.trim(),
-                        agenda: agenda.trim(),
-                        chair: chair.trim(),
-                        coChair: coChair.trim(),
-                        rapporteur: rapporteur.trim(),
-                        countries: portfolios.map(portfolio => ({
-                          name: portfolio.name,
-                          code: portfolio.id.toLowerCase(),
-                          attendance: 'present' as const
-                        })),
-                        countryList: portfolios.map(portfolio => ({
-  id: portfolio.id.toLowerCase(),
-  name: portfolio.name,
-  code: portfolio.id.toLowerCase(),
-  flagQuery: portfolio.id.toLowerCase(),
-  attendance: 'present' as const
-})),
-settings: {
-                          enableMotions,
-                          enableVoting,
-                          showTimer,
-                          showSpeakerList,
-                          showMotions,
-                          recordSession,
-                          autoSaveDrafts,
-                          notificationsEnabled,
-                          speakingTime
-                        }
-                      };
-                      
-                      await onSetupComplete(committeeData);
+  try {
+    setIsCreating(true);
+    const committeeData = {
+      name: committeeName.trim(),
+      abbrev: shortcode.trim(),
+      agenda: agenda.trim(),
+      chair: chair.trim(),
+      coChair: coChair.trim(),
+      rapporteur: rapporteur.trim(),
+      countries: portfolios.map(portfolio => ({
+        name: portfolio.name,
+        code: portfolio.id.toLowerCase(),
+        attendance: 'present' as const
+      })),
+      countryList: portfolios.map(portfolio => ({
+        id: portfolio.id.toLowerCase(),
+        name: portfolio.name,
+        code: portfolio.id.toLowerCase(),
+        flagQuery: portfolio.id.toLowerCase(),
+        attendance: 'present' as const
+      })),
+      settings: {
+        enableMotions,
+        enableVoting,
+        showTimer,
+        showSpeakerList,
+        showMotions,
+        recordSession,
+        autoSaveDrafts,
+        notificationsEnabled,
+        speakingTime
+      }
+    };
+    
+    await onSetupComplete(committeeData);
 
-// Store theme in session storage
-if (typeof window !== 'undefined') {
-  sessionStorage.setItem('selectedTheme', theme);
-}
-
-router.push('/speaker-list');
+                      router.push('/speaker-list');
                     } catch (error) {
                       console.error('Error creating committee:', error);
                     } finally {
