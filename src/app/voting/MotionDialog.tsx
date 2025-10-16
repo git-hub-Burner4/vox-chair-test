@@ -6,38 +6,74 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { Motion } from "@/types/motion";
 import type { Speaker } from "@/types/shared/speaker";
+import { Check, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface MotionDialogProps {
   motion: Motion;
   isOpen: boolean;
   onClose: () => void;
-  onVote: (votes: { yes: number; no: number; abstain: number; passed: boolean }) => void;
+  onOpenChange: (open: boolean) => void;
+  onVote?: (votes: { yes: number; no: number; abstain: number; passed: boolean }) => void;
+  onSubmit?: (
+    motionId: string,
+    additionalDuration: number,
+    newSpeakingTime: number,
+    proposingCountry: string,
+    passed: boolean
+  ) => void;
   allMembers: Speaker[];
+  enableVoting?: boolean;
 }
 
 export function MotionDialog({
   motion,
   isOpen,
   onClose,
+  onOpenChange,
   onVote,
-  allMembers
+  onSubmit,
+  allMembers,
+  enableVoting = true,
 }: MotionDialogProps) {
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
-  const presentMembers = allMembers.filter(member => member.present);
+  const presentMembers = allMembers.filter(member => 
+    member.attendance === 'present' || member.attendance === 'present-voting'
+  );
 
-  const handleVoteComplete = (voteType: 'yes' | 'no' | 'abstain') => {
-    const votes = {
-      yes: voteType === 'yes' ? presentMembers.length : 0,
-      no: voteType === 'no' ? presentMembers.length : 0,
-      abstain: voteType === 'abstain' ? presentMembers.length : 0,
-      passed: voteType === 'yes'
-    };
-    onVote(votes);
-    onClose();
+  const handleVoteComplete = (passed: boolean) => {
+    console.log("=== Vote Complete ===");
+    console.log("Passed:", passed);
+    
+    // Call the vote callback if provided
+    if (typeof onVote === 'function') {
+      onVote({ yes: 0, no: 0, abstain: 0, passed });
+    }
+
+    // Call submit with motion data if provided
+    if (typeof onSubmit === 'function') {
+      onSubmit(
+        motion.id,
+        0, // additionalDuration
+        motion.speakingTime || 0,
+        motion.proposingCountry || "", // Use motion's proposing country
+        passed
+      );
+    }
+
+    toast.success(passed ? "Motion passed" : "Motion failed");
+    onOpenChange(false);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+    onOpenChange(open);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{motion.type}</DialogTitle>
@@ -45,57 +81,29 @@ export function MotionDialog({
 
         <div className="mb-4">
           <h3 className="font-medium">{motion.name || "Untitled Motion"}</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Proposed by: {motion.proposedBy}
-          </p>
-          {motion.duration && (
-            <p className="text-sm text-muted-foreground">
-              Duration: {motion.duration} minutes
-            </p>
-          )}
-          {motion.speakingTime && (
-            <p className="text-sm text-muted-foreground">
-              Speaking Time: {motion.speakingTime} seconds
-            </p>
-          )}
         </div>
-
-        <ScrollArea className="h-[300px] px-4">
-          <div className="space-y-4 py-4">
-            <div className="font-medium mb-2">Present Members ({presentMembers.length})</div>
-            {presentMembers.map((member) => (
-              <div
-                key={member.id}
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedMember === member.id
-                    ? "border-primary bg-primary/5"
-                    : "hover:border-primary/50"
-                }`}
-                onClick={() => setSelectedMember(member.id)}
-              >
-                {member.name}
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
 
         <div className="flex flex-col gap-2 mt-4">
           <div className="grid grid-cols-2 gap-2">
             <Button
-              onClick={() => handleVoteComplete('yes')}
-              className="w-full bg-green-600 hover:bg-green-700"
+              size="lg"
+              className="h-20 text-base bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => handleVoteComplete(true)}
             >
+              <Check className="h-5 w-5 mr-2" />
               Pass
             </Button>
             <Button
-              onClick={() => handleVoteComplete('no')}
-              className="w-full bg-red-600 hover:bg-red-700"
+              size="lg"
+              className="h-20 text-base bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => handleVoteComplete(false)}
             >
+              <X className="h-5 w-5 mr-2" />
               Fail
             </Button>
           </div>
           <Button
-            onClick={onClose}
+            onClick={() => onOpenChange(false)}
             variant="outline"
             className="w-full"
           >

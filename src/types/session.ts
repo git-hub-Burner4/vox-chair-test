@@ -29,5 +29,10 @@ export interface CommitteeSessionData {
   settings?: {
     enableMotions: boolean;
     enableVoting: boolean;
+    showTimer?: boolean;
+    showSpeakerList?: boolean;
+    showMotions?: boolean;
+    speakingTime?: number;
+    theme?: string;
   };
 }

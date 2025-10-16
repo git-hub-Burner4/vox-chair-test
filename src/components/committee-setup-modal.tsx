@@ -634,120 +634,150 @@ export default function CommitteeSetupModal({
                   )}
 
                   {currentPage === "display" && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-sm font-semibold mb-4">Display Elements</h3>
-                        <TooltipProvider>
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                              <div className="space-y-1">
-                                <Label htmlFor="show-timer" className="text-sm font-medium cursor-pointer">
-                                  Show Timer
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                  Display countdown timer during speeches
-                                </p>
-                              </div>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div>
-                                    <Switch
-                                      id="show-timer"
-                                      checked={showTimer}
-                                      onCheckedChange={setShowTimer}
-                                    />
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="z-[100]">
-                                  <p>Visible countdown timer</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
+  <div className="space-y-6">
+    <div>
+      <h3 className="text-sm font-semibold mb-4">Display Elements</h3>
+      <TooltipProvider>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+            <div className="space-y-1">
+              <Label htmlFor="show-timer" className="text-sm font-medium cursor-pointer">
+                Show Timer
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Display countdown timer during speeches
+              </p>
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Switch
+                    id="show-timer"
+                    checked={showTimer}
+                    onCheckedChange={setShowTimer}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="z-[100]">
+                <p>Visible countdown timer</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
 
-                            <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                              <div className="space-y-1">
-                                <Label htmlFor="show-speaker-list" className="text-sm font-medium cursor-pointer">
-                                  Show Speaker List
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                  Display current speaker list on screen
-                                </p>
-                              </div>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div>
-                                    <Switch
-                                      id="show-speaker-list"
-                                      checked={showSpeakerList}
-                                      onCheckedChange={setShowSpeakerList}
-                                    />
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="z-[100]">
-                                  <p>Display speaker queue</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+            <div className="space-y-1">
+              <Label htmlFor="show-speaker-list" className="text-sm font-medium cursor-pointer">
+                Show Speaker List
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Display current speaker list on screen
+              </p>
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Switch
+                    id="show-speaker-list"
+                    checked={showSpeakerList}
+                    onCheckedChange={setShowSpeakerList}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="z-[100]">
+                <p>Display speaker queue</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
 
-                            <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-  <div className="space-y-1">
-    <Label htmlFor="show-motions" className="text-sm font-medium cursor-pointer">
-      Show Motion Status Badges
-    </Label>
-    <p className="text-xs text-muted-foreground">
-      Display status badges on motion cards
-    </p>
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+            <div className="space-y-1">
+              <Label htmlFor="show-motions" className="text-sm font-medium cursor-pointer">
+                Show Motion Status Badges
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Display status badges on motion cards
+              </p>
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Switch
+                    id="show-motions"
+                    checked={showMotions}
+                    onCheckedChange={setShowMotions}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="z-[100]">
+                <p>Show motion information</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </TooltipProvider>
+    </div>
+
+    <Separator />
+
+    <div className="space-y-2">
+      <Label htmlFor="theme" className="text-sm font-medium">
+        Color Theme
+      </Label>
+      <TooltipProvider>
+        <Select value={theme} onValueChange={setTheme}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SelectTrigger id="theme" className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="z-[100]">
+              <p>Choose a color theme for the committee</p>
+            </TooltipContent>
+          </Tooltip>
+          <SelectContent>
+            <SelectItem value="default">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-neutral-800" />
+                Default
+              </div>
+            </SelectItem>
+            <SelectItem value="professional">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.35 0.15 240)"}} />
+                Professional
+              </div>
+            </SelectItem>
+            <SelectItem value="modern">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.50 0.25 280)"}} />
+                Modern
+              </div>
+            </SelectItem>
+            <SelectItem value="classic">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.25 0.05 240)"}} />
+                Classic
+              </div>
+            </SelectItem>
+            <SelectItem value="minimal">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.30 0 0)"}} />
+                Minimal
+              </div>
+            </SelectItem>
+            <SelectItem value="vibrant">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.55 0.30 280)"}} />
+                Vibrant
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </TooltipProvider>
+    </div>
   </div>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div>
-                                    <Switch
-                                      id="show-motions"
-                                      checked={showMotions}
-                                      onCheckedChange={setShowMotions}
-                                    />
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="z-[100]">
-                                  <p>Show motion information</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                          </div>
-                        </TooltipProvider>
-                      </div>
-
-                      <Separator />
-
-                      <div className="space-y-2">
-                        <Label htmlFor="theme" className="text-sm font-medium">
-                          Color Theme
-                        </Label>
-                        <TooltipProvider>
-                          <Select value={theme} onValueChange={setTheme}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <SelectTrigger id="theme" className="h-9">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="z-[100]">
-                                <p>Choose a color theme for the committee</p>
-                              </TooltipContent>
-                            </Tooltip>
-                            <SelectContent>
-                              <SelectItem value="default">Default</SelectItem>
-                              <SelectItem value="professional">Professional</SelectItem>
-                              <SelectItem value="modern">Modern</SelectItem>
-                              <SelectItem value="classic">Classic</SelectItem>
-                              <SelectItem value="minimal">Minimal</SelectItem>
-                              <SelectItem value="vibrant">Vibrant</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TooltipProvider>
-                      </div>
-                    </div>
-                  )}
+)}
 
                   {currentPage === "advanced" && (
                     <div className="space-y-6">
@@ -860,13 +890,14 @@ export default function CommitteeSetupModal({
                           attendance: 'present' as const
                         })),
                         countryList: portfolios.map(portfolio => ({
-                          id: portfolio.id.toLowerCase(),
-                          name: portfolio.name,
-                          code: portfolio.id.toLowerCase(),
-                          flagQuery: portfolio.id.toLowerCase(),
-                          attendance: 'present' as const
-                        })),
-                        settings: {
+  id: portfolio.id.toLowerCase(),
+  name: portfolio.name,
+  code: portfolio.id.toLowerCase(),
+  flagQuery: portfolio.id.toLowerCase(),
+  attendance: 'present' as const
+})),
+settings: {
+  theme: theme,
                           enableMotions,
                           enableVoting,
                           showTimer,
@@ -880,7 +911,13 @@ export default function CommitteeSetupModal({
                       };
                       
                       await onSetupComplete(committeeData);
-                      router.push('/speaker-list');
+
+// Store theme in session storage
+if (typeof window !== 'undefined') {
+  sessionStorage.setItem('selectedTheme', theme);
+}
+
+router.push('/speaker-list');
                     } catch (error) {
                       console.error('Error creating committee:', error);
                     } finally {

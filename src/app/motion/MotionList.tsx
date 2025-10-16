@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Vote } from "lucide-react";
+import { MotionDialog } from "@/app/voting/MotionDialog";
 
 interface MotionListProps {
   motions: Motion[];
@@ -19,7 +20,8 @@ interface MotionListProps {
   onStatusChange: (motionId: string, newStatus: "Pending" | "In Progress" | "Completed") => void;
   allMembers: Speaker[];
   currentSpeaker?: Speaker | null;
-  showMotionStatus?: boolean; // Add this line
+  showMotionStatus?: boolean;
+  enableVoting?: boolean;
 }
 
 const statusColors: Record<MotionStatus, string> = {
@@ -38,12 +40,20 @@ export const MotionList = ({
   onReorderMotions,
   onStatusChange,
   allMembers,
-  showMotionStatus = true  // Add this line with default value
+  showMotionStatus = true,
+  enableVoting = true
 }: MotionListProps) => {
+
+  console.log("=== MotionList Props ===");
+  console.log("showMotionStatus:", showMotionStatus);
+  console.log("enableVoting:", enableVoting);
+  console.log("Number of motions:", motions.length);
 
   const [filter, setFilter] = useState<MotionStatus | "All">("All");
   const [draggedMotion, setDraggedMotion] = useState<Motion | null>(null);
   const [dragOverMotionId, setDragOverMotionId] = useState<string | null>(null);
+  const [selectedMotion, setSelectedMotion] = useState<Motion | null>(null);
+  const [votingDialogOpen, setVotingDialogOpen] = useState(false);
   
   // Sort motions: Passed -> In Progress -> Pending -> Failed
   const statusPriority: Record<MotionStatus, number> = {
@@ -60,18 +70,18 @@ export const MotionList = ({
   const filteredMotions =
     filter === "All" ? sortedMotions : sortedMotions.filter((m) => m.status === filter);
 
-    const handleVoteComplete = (voteData: { yes: number; no: number; abstain: number; passed: boolean; adjourned?: boolean }) => {
+  const handleVoteComplete = (voteData: { yes: number; no: number; abstain: number; passed: boolean }) => {
+    console.log("=== Vote Complete ===");
+    console.log("Vote data:", voteData);
+    console.log("Selected motion:", selectedMotion);
+    
     if (!selectedMotion) return;
     
-    if (voteData.adjourned) {
-      // For adjourned motions, just call adjourn
-      onAdjournMotion(selectedMotion.id);
-    } else {
-      // For regular voting
-      onVote(selectedMotion.id, voteData.yes, voteData.no, voteData.abstain);
-    }
+    // Call the onVote handler
+    onVote(selectedMotion.id, voteData.yes, voteData.no, voteData.abstain);
     
     setSelectedMotion(null);
+    setVotingDialogOpen(false);
   };
 
   const handleDragStart = (motion: Motion) => {
@@ -114,6 +124,56 @@ export const MotionList = ({
     setDragOverMotionId(null);
   };
 
+  
+const handleMotionSubmit = (
+  motionId: string,
+  additionalDuration: number,
+  newSpeakingTime: number,
+  proposingCountry: string,
+  passed: boolean
+) => {
+  console.log("Motion Submit Handler Called:", {
+    motionId,
+    additionalDuration,
+    newSpeakingTime,
+    proposingCountry,
+    passed,
+  });
+
+  if (!selectedMotion) return;
+
+  // Update motion status based on vote result
+  // If passed, move to "In Progress", if failed move to "Failed"
+  const newStatus: MotionStatus = passed ? "In Progress" : "Failed";
+  onStatusChange(motionId, newStatus);
+
+  // Clear selected motion and close dialog
+  setSelectedMotion(null);
+  setVotingDialogOpen(false);
+};
+
+const handleVote = (votes: {
+  yes: number;
+  no: number;
+  abstain: number;
+  passed: boolean;
+}) => {
+  console.log("Vote recorded:", votes);
+  // Additional vote handling if needed
+};
+
+const handleAdjournMotion = (motionId: string) => {
+  console.log("=== Adjourn Motion ===");
+  console.log("Motion ID:", motionId);
+  
+  // Change motion status from "In Progress" to "Passed"
+  onStatusChange(motionId, "Passed");
+  
+  // Call the original adjourn handler if needed
+  onAdjournMotion(motionId);
+};
+
+
   return (
     <div className="space-y-4">
       <Tabs defaultValue="All" className="w-full space-y-4 pb-4" onValueChange={(value) => setFilter(value as MotionStatus | "All")}>
@@ -145,8 +205,10 @@ export const MotionList = ({
                     <div className="flex items-center gap-3 mb-2">
                       <h4 className="font-semibold text-lg">{motion.name}</h4>
                       {showMotionStatus && (
-  <Badge className={`${statusColors[motion.status]} font-medium shadow-sm px-3`}>{motion.status}</Badge>
-)}
+                        <Badge className={`${statusColors[motion.status]} font-medium shadow-sm px-3`}>
+                          {motion.status}
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground space-y-1">
                       <p>
@@ -184,34 +246,52 @@ export const MotionList = ({
                   </div>
                   <div className="flex gap-2">
                     {motion.status === "In Progress" && (
+  <>
+    {motion.type !== "Adjournment" && motion.type !== "Extension" && (
+      <Button
+        size="sm"
+        onClick={() => onExtendMotion(motion)}
+        className="formal-btn"
+      >
+        Extend
+      </Button>
+    )}
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => handleAdjournMotion(motion.id)}
+    >
+      Adjourn
+    </Button>
+  </>
+)}
+                    {motion.status === "Pending" && (
                       <>
-                        {motion.type !== "Adjournment" && motion.type !== "Extension" && (
+                        {enableVoting && (
                           <Button
                             size="sm"
-                            onClick={() => onExtendMotion(motion)}  // Pass full motion object
-                            className="formal-btn"
+                            onClick={() => {
+                              console.log("=== Vote button clicked ===");
+                              console.log("Motion:", motion);
+                              console.log("enableVoting:", enableVoting);
+                              setSelectedMotion(motion);
+                              setVotingDialogOpen(true);
+                            }}
+                            className="bg-white hover:bg-white-700 text-black"
                           >
-                            Extend
+                            <Vote className="h-4 w-4 mr-1" />
+                            Vote
                           </Button>
                         )}
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => onAdjournMotion(motion.id)}
+                          onClick={() => onEditMotion(motion)}
                         >
-                          Adjourn
+                          Edit
                         </Button>
                       </>
                     )}
-                    {motion.status === "Pending" && (
-  <Button
-    size="sm"
-    variant="outline"
-    onClick={() => onEditMotion(motion)}
-  >
-    Edit
-  </Button>
-)}
                   </div>
                 </div>
               </Card>
@@ -219,6 +299,23 @@ export const MotionList = ({
           )}
         </div>
       </Tabs>
+      
+      {/* Voting Dialog */}
+{selectedMotion && (
+  <MotionDialog
+    motion={selectedMotion}
+    isOpen={votingDialogOpen}
+    onClose={() => {
+      setVotingDialogOpen(false);
+      setSelectedMotion(null);
+    }}
+    onOpenChange={setVotingDialogOpen}
+    onVote={handleVote}
+    onSubmit={handleMotionSubmit}
+    allMembers={allMembers}
+    enableVoting={enableVoting}
+  />
+)}
     </div>
   );
 };

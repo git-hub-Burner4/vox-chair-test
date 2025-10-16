@@ -634,9 +634,49 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     }
   }, [setTitle]);
 
+  // Apply theme on mount
+// In page.tsx, replace the theme useEffect with this:
+
+// Apply theme on mount
+useEffect(() => {
+  console.log("=== Theme Debug ===");
+  console.log("Committee:", committee);
+  console.log("Committee settings:", committee?.settings);
+  console.log("Theme value:", committee?.settings?.theme);
+  
+  if (committee?.settings?.theme) {
+    const themeName = committee.settings.theme;
+    const themeClass = `theme-${themeName}`;
+    
+    console.log("Applying theme:", themeClass);
+    
+    // Remove all theme classes
+    Array.from(document.documentElement.classList).forEach(cls => {
+      if (cls.startsWith('theme-')) {
+        console.log("Removing class:", cls);
+        document.documentElement.classList.remove(cls);
+      }
+    });
+    
+    // Add new theme class
+    document.documentElement.classList.add(themeClass);
+    console.log("Added class:", themeClass);
+    console.log("Final classes:", Array.from(document.documentElement.classList));
+  } else {
+    console.log("No theme found in committee settings");
+  }
+}, [committee?.settings?.theme]);
+
   // Load committee settings and apply them
-  useEffect(() => {
+useEffect(() => {
   if (committee?.settings && !settingsLoaded) {
+    console.log("=== Loading Committee Settings ===");
+    console.log("Full committee object:", committee);
+    console.log("Settings:", committee.settings);
+    console.log("enableMotions:", committee.settings.enableMotions);
+    console.log("enableVoting:", committee.settings.enableVoting);
+    console.log("showMotions:", committee.settings.showMotions);
+    
     // Set default speaking time from committee settings
     const defaultTime = committee.settings.speakingTime || 120;
     
@@ -654,7 +694,7 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     // Set display preferences
     setShowTimerDisplay(committee.settings.showTimer ?? true);
     setShowSpeakerListDisplay(committee.settings.showSpeakerList ?? true);
-    setShowMotionsDisplay(committee.settings.enableMotions ?? true);
+    setShowMotionsDisplay(true);
     setShowMotionStatusBadges(committee.settings.showMotions ?? true);
     
     console.log('Applied committee settings:', {
@@ -819,8 +859,10 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
   };
 
   const handleExtendMotion = (motion: Motion) => {
-  console.log('handleExtendMotion called with:', motion);
+  console.log('=== handleExtendMotion called ===');
+  console.log('Motion:', motion);
   console.log('Motion status:', motion.status);
+  console.log('enableVoting setting:', committee?.settings?.enableVoting);
   
   if (!motion) {
     toast.error('Invalid motion to extend');
@@ -1543,17 +1585,18 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
       <>
         <Card className="mb-6">
           <MotionList
-            motions={motions.filter(m => !m.parentMotionId || m.type !== "Extension")}
-            onVote={handleMotionVote}
-            onAdjournMotion={handleAdjournMotion}
-            onStatusChange={handleMotionStatusChange}
-            onExtendMotion={handleExtendMotion}
-            onEditMotion={() => {}}
-            onReorderMotions={() => {}}
-            allMembers={allMembers}
-            currentSpeaker={currentSpeaker}
-            showMotionStatus={showMotionStatusBadges}
-          />
+  motions={motions.filter(m => !m.parentMotionId || m.type !== "Extension")}
+  onVote={handleMotionVote}
+  onAdjournMotion={handleAdjournMotion}
+  onStatusChange={handleMotionStatusChange}
+  onExtendMotion={handleExtendMotion}
+  onEditMotion={() => {}}
+  onReorderMotions={() => {}}
+  allMembers={allMembers}
+  currentSpeaker={currentSpeaker}
+  showMotionStatus={showMotionStatusBadges}
+  enableVoting={committee?.settings?.enableVoting ?? true}  // ADD THIS LINE
+/>
           {/* Display extension motions under their parent */}
           {motions.filter(m => m.type === "Extension" && m.parentMotionId).map(extension => {
             const parent = motions.find(m => m.id === extension.parentMotionId);
@@ -1691,13 +1734,18 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
         onYield={handleYield}
       />
 
-      {extendMotionData.motion && (
+  {extendMotionData.motion && (
   <ExtendMotionDialog
     open={extendMotionData.open}
-    onOpenChange={(open) => setExtendMotionData(prev => ({ ...prev, open }))}
+    onOpenChange={(open) => {
+      console.log("=== ExtendMotionDialog onOpenChange ===");
+      console.log("New open state:", open);
+      setExtendMotionData(prev => ({ ...prev, open }));
+    }}
     originalMotion={extendMotionData.motion}
     onSubmit={handleExtendMotionSubmit}
     countries={committee?.countryList || []}
+    enableVoting={committee?.settings?.enableVoting ?? true}
   />
 )}
     </div>

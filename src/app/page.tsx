@@ -8,6 +8,7 @@ import { useCommittee } from "@/lib/committee-context"
 import { SetupNewCommittee } from "@/components/setup-committee"
 import CommitteeSetupModal from "@/components/committee-setup-modal"
 import { logSessionStart } from "@/lib/logging"
+import { saveCommittee } from "@/lib/session-storage"
 
 // Mock data - replace with actual data later
 const recentCommittees = [
@@ -62,12 +63,17 @@ export default function Page() {
           showMotions: data.settings?.showMotions ?? true,
           recordSession: data.settings?.recordSession ?? true,
           autoSaveDrafts: data.settings?.autoSaveDrafts ?? true,
-          notificationsEnabled: data.settings?.notificationsEnabled ?? true
+          notificationsEnabled: data.settings?.notificationsEnabled ?? true,
+          speakingTime: data.settings?.speakingTime ?? 120
         }
       };
+
       logSessionStart(`Committee prepared: ${data.name}`, data.countries.length);
       console.log('Saving committee data:', committeeData);
+
+      saveCommittee(committeeData);
       setCommittee(committeeData);
+
     } catch (error) {
       console.error('Error setting up committee:', error);
     }
