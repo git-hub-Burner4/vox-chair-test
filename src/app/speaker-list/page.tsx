@@ -634,24 +634,6 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
     }
   }, [setTitle]);
 
-// Apply theme on mount
-useEffect(() => {
-  if (committee?.settings?.theme) {
-    const themeName = committee.settings.theme;
-    const themeClass = `theme-${themeName}`;
-    
-    // Remove all theme classes
-    Array.from(document.documentElement.classList).forEach(cls => {
-      if (cls.startsWith('theme-')) {
-        document.documentElement.classList.remove(cls);
-      }
-    });
-    
-    // Add new theme class
-    document.documentElement.classList.add(themeClass);
-  }
-}, [committee?.settings?.theme]);
-
   // Load committee settings and apply them
 useEffect(() => {
   if (committee?.settings && !settingsLoaded) {

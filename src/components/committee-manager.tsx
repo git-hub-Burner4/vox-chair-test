@@ -43,7 +43,6 @@ export interface Committee {
     autoSaveDrafts: boolean;
     notificationsEnabled: boolean;
     speakingTime: number;
-    theme?: string;
   };
 }
 

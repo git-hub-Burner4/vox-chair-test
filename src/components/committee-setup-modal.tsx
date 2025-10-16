@@ -92,37 +92,24 @@ export default function CommitteeSetupModal({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-onSetupComplete: (data: {
-  name: string
-  abbrev: string
-  agenda: string
-  chair: string
-  coChair: string
-  rapporteur: string
-  countries: Array<{
+  onSetupComplete: (data: {
     name: string
-    code: string
-    attendance: 'present' | 'absent' | 'present-voting'
-  }>
-  countryList: Array<{
-    id: string
-    name: string
-    flagQuery: string
-  }>
-  settings: {
-    enableMotions: boolean
-    enableVoting: boolean
-    showTimer: boolean
-    showSpeakerList: boolean
-    showMotions: boolean
-    recordSession: boolean
-    autoSaveDrafts: boolean
-    notificationsEnabled: boolean
-    speakingTime: number
-    theme: string
-  }
-}) => void
-
+    abbrev: string
+    agenda: string
+    chair: string
+    coChair: string
+    rapporteur: string
+    countries: Array<{
+      name: string
+      code: string
+      attendance: 'present' | 'absent' | 'present-voting'
+    }>
+    countryList: Array<{
+      id: string
+      name: string
+      flagQuery: string
+    }>
+  }) => void
 }) {
   const [currentPage, setCurrentPage] = useState<"basic-info" | "members" | "session" | "display" | "advanced">("basic-info")
   const [committeeName, setCommitteeName] = useState("")
@@ -147,7 +134,6 @@ onSetupComplete: (data: {
   const [showTimer, setShowTimer] = useState(true)
   const [showSpeakerList, setShowSpeakerList] = useState(true)
   const [showMotions, setShowMotions] = useState(true)
-  const [theme, setTheme] = useState("default")
   
   // Advanced Settings
   const [recordSession, setRecordSession] = useState(true)
@@ -729,66 +715,6 @@ onSetupComplete: (data: {
         </div>
       </TooltipProvider>
     </div>
-
-    <Separator />
-
-    <div className="space-y-2">
-      <Label htmlFor="theme" className="text-sm font-medium">
-        Color Theme
-      </Label>
-      <TooltipProvider>
-        <Select value={theme} onValueChange={setTheme}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <SelectTrigger id="theme" className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="z-[100]">
-              <p>Choose a color theme for the committee</p>
-            </TooltipContent>
-          </Tooltip>
-          <SelectContent>
-            <SelectItem value="default">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-neutral-800" />
-                Default
-              </div>
-            </SelectItem>
-            <SelectItem value="professional">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.35 0.15 240)"}} />
-                Professional
-              </div>
-            </SelectItem>
-            <SelectItem value="modern">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.50 0.25 280)"}} />
-                Modern
-              </div>
-            </SelectItem>
-            <SelectItem value="classic">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.25 0.05 240)"}} />
-                Classic
-              </div>
-            </SelectItem>
-            <SelectItem value="minimal">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.30 0 0)"}} />
-                Minimal
-              </div>
-            </SelectItem>
-            <SelectItem value="vibrant">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{background: "oklch(0.55 0.30 280)"}} />
-                Vibrant
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </TooltipProvider>
-    </div>
   </div>
 )}
 
@@ -891,39 +817,38 @@ onSetupComplete: (data: {
                     try {
                       setIsCreating(true);
                       const committeeData = {
-  name: committeeName.trim(),
-  abbrev: shortcode.trim(),
-  agenda: agenda.trim(),
-  chair: chair.trim(),
-  coChair: coChair.trim(),
-  rapporteur: rapporteur.trim(),
-  countries: portfolios.map(portfolio => ({
-    name: portfolio.name,
-    code: portfolio.id.toLowerCase(),
-    attendance: 'present' as const
-  })),
-  countryList: portfolios.map(portfolio => ({
-    id: portfolio.id.toLowerCase(),
-    name: portfolio.name,
-    code: portfolio.id.toLowerCase(),
-    flagQuery: portfolio.id.toLowerCase(),
-    attendance: 'present' as const
-  })),
-  settings: {
-    enableMotions,
-    enableVoting,
-    showTimer,
-    showSpeakerList,
-    showMotions,
-    recordSession,
-    autoSaveDrafts,
-    notificationsEnabled,
-    speakingTime,
-    theme  // ADD THIS LINE
-  }
-};
-
-await onSetupComplete(committeeData);
+                        name: committeeName.trim(),
+                        abbrev: shortcode.trim(),
+                        agenda: agenda.trim(),
+                        chair: chair.trim(),
+                        coChair: coChair.trim(),
+                        rapporteur: rapporteur.trim(),
+                        countries: portfolios.map(portfolio => ({
+                          name: portfolio.name,
+                          code: portfolio.id.toLowerCase(),
+                          attendance: 'present' as const
+                        })),
+                        countryList: portfolios.map(portfolio => ({
+  id: portfolio.id.toLowerCase(),
+  name: portfolio.name,
+  code: portfolio.id.toLowerCase(),
+  flagQuery: portfolio.id.toLowerCase(),
+  attendance: 'present' as const
+})),
+settings: {
+                          enableMotions,
+                          enableVoting,
+                          showTimer,
+                          showSpeakerList,
+                          showMotions,
+                          recordSession,
+                          autoSaveDrafts,
+                          notificationsEnabled,
+                          speakingTime
+                        }
+                      };
+                      
+                      await onSetupComplete(committeeData);
 
 // Store theme in session storage
 if (typeof window !== 'undefined') {

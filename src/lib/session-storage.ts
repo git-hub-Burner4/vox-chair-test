@@ -29,7 +29,6 @@ export type CommitteeSessionData = {
     autoSaveDrafts?: boolean;
     notificationsEnabled?: boolean;
     speakingTime?: number;
-    theme?: string;
   };
 };
 
