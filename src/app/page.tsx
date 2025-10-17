@@ -1,22 +1,23 @@
+// src/app/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Clock, Layout, Folder, Loader2 } from "lucide-react"
+import { Plus, Clock, Layout, Loader2 } from "lucide-react"
 import { useCommittee } from "@/lib/committee-context"
 import CommitteeSetupModal from "@/components/committee-setup-modal"
 import { logSessionStart } from "@/lib/logging"
 import { saveCommittee } from "@/lib/session-storage"
 import { 
   getRecentCommittees, 
-  saveCommitteeToDatabase,
   updateCommitteeAccess,
   getCommitteeById 
 } from "@/lib/supabase/committees"
+import { createCommitteeAction } from "@/lib/actions/committees"
 
-// Mock templates - these could also come from database if needed
+// Mock templates
 const templates = [
   { id: 1, name: "UN Security Council", members: 15, description: "Standard UN Security Council setup" },
   { id: 2, name: "Small Committee", members: 10, description: "For smaller discussion groups" },
@@ -59,24 +60,17 @@ export default function Page() {
     settings?: any
   }) => {
     try {
-      console.log('Setting up committee with data:', data);
+      console.log('Setting up committee with data:', data)
       
-      // Save to Supabase
-      const savedCommittee = await saveCommitteeToDatabase(
-        {
-          name: data.name,
-          abbrev: data.abbrev,
-          agenda: data.agenda,
-          chair: data.chair,
-          coChair: data.coChair,
-          rapporteur: data.rapporteur,
-          settings: data.settings || {}
-        },
-        data.countries
-      );
+      // Call server action
+      const result = await createCommitteeAction(data)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create committee')
+      }
 
       const committeeData = {
-        id: savedCommittee.committee_id,
+        id: result.committee_id,
         name: data.name,
         abbrev: data.abbrev,
         agenda: data.agenda,
@@ -96,22 +90,22 @@ export default function Page() {
           notificationsEnabled: data.settings?.notificationsEnabled ?? true,
           speakingTime: data.settings?.speakingTime ?? 120
         }
-      };
+      }
 
-      logSessionStart(`Committee prepared: ${data.name}`, data.countries.length);
-      console.log('Saving committee data:', committeeData);
+      logSessionStart(`Committee prepared: ${data.name}`, data.countries.length)
+      console.log('Saving committee data:', committeeData)
 
-      saveCommittee(committeeData);
-      setCommittee(committeeData);
+      saveCommittee(committeeData)
+      setCommittee(committeeData)
 
       // Reload recent committees
-      await loadRecentCommittees();
+      await loadRecentCommittees()
 
       // Navigate to speaker list
-      router.push(`/speaker-list?committee=${savedCommittee.committee_id}`);
+      router.push(`/speaker-list?committee=${result.committee_id}`)
     } catch (error) {
-      console.error('Error setting up committee:', error);
-      alert('Failed to create committee. Please try again.');
+      console.error('Error setting up committee:', error)
+      alert(`Failed to create committee: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
     setSetupModalOpen(false)
   }
@@ -119,20 +113,20 @@ export default function Page() {
   const handleCommitteeClick = async (committeeId: string) => {
     try {
       // Update last accessed time
-      await updateCommitteeAccess(committeeId);
+      await updateCommitteeAccess(committeeId)
       
       // Load full committee data
-      const fullCommittee = await getCommitteeById(committeeId);
+      const fullCommittee = await getCommitteeById(committeeId)
       
       // Set in context and session storage
-      saveCommittee(fullCommittee);
-      setCommittee(fullCommittee);
+      saveCommittee(fullCommittee)
+      setCommittee(fullCommittee)
       
       // Navigate to speaker list
-      router.push(`/speaker-list?committee=${committeeId}`);
+      router.push(`/speaker-list?committee=${committeeId}`)
     } catch (error) {
-      console.error('Error loading committee:', error);
-      alert('Failed to load committee. Please try again.');
+      console.error('Error loading committee:', error)
+      alert('Failed to load committee. Please try again.')
     }
   }
 
