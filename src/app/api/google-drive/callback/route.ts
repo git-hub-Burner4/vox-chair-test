@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { storeDriveTokens, createRootFolder, createDriveClient } from '@/lib/google-drive';
+import { baseUrl } from '@/lib/environment';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
-    const state = searchParams.get('state'); // This is the user ID
+    const state = searchParams.get('state');
     const error = searchParams.get('error');
 
     if (error) {
@@ -17,21 +18,17 @@ export async function GET(request: NextRequest) {
         `
         <!DOCTYPE html>
         <html>
-          <head>
-            <title>Connection Failed</title>
-          </head>
+          <head><title>Connection Failed</title></head>
           <body>
             <script>
-              window.opener.postMessage('drive-connection-failed', window.location.origin);
+              window.opener.postMessage('drive-connection-failed', '*');
               window.close();
             </script>
-            <p>Connection failed. You can close this window.</p>
+            <p>❌ Connection failed: ${error}</p>
           </body>
         </html>
         `,
-        {
-          headers: { 'Content-Type': 'text/html' },
-        }
+        { headers: { 'Content-Type': 'text/html' } }
       );
     }
 
@@ -43,28 +40,22 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = state;
-
-    // Determine the callback URL based on environment (must match auth route)
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    
+    // ✅ USE DYNAMIC BASE URL
     const callbackUrl = `${baseUrl}/api/google-drive/callback`;
+    console.log(`📍 OAuth Callback URL: ${callbackUrl}`);
 
-    // Create OAuth2 client
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
       callbackUrl
     );
 
-    // Exchange code for tokens
     const { tokens } = await oauth2Client.getToken(code);
     
     if (!tokens.access_token || !tokens.refresh_token || !tokens.expiry_date) {
       throw new Error('Invalid tokens received from Google');
     }
 
-    // Store tokens in database
     await storeDriveTokens(userId, {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -72,7 +63,6 @@ export async function GET(request: NextRequest) {
       scope: tokens.scope || '',
     });
 
-    // Create root folder in Drive
     const drive = createDriveClient({
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -82,9 +72,8 @@ export async function GET(request: NextRequest) {
 
     const rootFolderId = await createRootFolder(drive);
 
-    // Update database with root folder ID
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(
+    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js');
+    const supabase = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
@@ -94,48 +83,39 @@ export async function GET(request: NextRequest) {
       .update({ root_folder_id: rootFolderId })
       .eq('user_id', userId);
 
-    // Return HTML that closes the popup and notifies parent
     return new NextResponse(
       `
       <!DOCTYPE html>
       <html>
-        <head>
-          <title>Connected</title>
-        </head>
+        <head><title>Connected</title></head>
         <body>
           <script>
-            window.opener.postMessage('drive-connected', window.location.origin);
+            window.opener.postMessage('drive-connected', '*');
             window.close();
           </script>
-          <p>Google Drive connected successfully! You can close this window.</p>
+          <p>✅ Google Drive connected! You can close this window.</p>
         </body>
       </html>
       `,
-      {
-        headers: { 'Content-Type': 'text/html' },
-      }
+      { headers: { 'Content-Type': 'text/html' } }
     );
   } catch (error) {
-    console.error('Error in Google OAuth callback:', error);
+    console.error('Google OAuth Error:', error);
     return new NextResponse(
       `
       <!DOCTYPE html>
       <html>
-        <head>
-          <title>Connection Failed</title>
-        </head>
+        <head><title>Connection Failed</title></head>
         <body>
           <script>
-            window.opener.postMessage('drive-connection-failed', window.location.origin);
+            window.opener.postMessage('drive-connection-failed', '*');
             window.close();
           </script>
-          <p>Connection failed. You can close this window.</p>
+          <p>❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}</p>
         </body>
       </html>
       `,
-      {
-        headers: { 'Content-Type': 'text/html' },
-      }
+      { headers: { 'Content-Type': 'text/html' } }
     );
   }
 }
