@@ -226,3 +226,14 @@ export async function listSessions() {
     throw error;
   }
 }
+
+// Auto-sync to Supabase when available
+export async function saveCommitteeWithSync(committee: CommitteeSessionData): Promise<void> {
+  saveCommittee(committee); // Local storage
+  try {
+    await saveSession(committee); // Supabase
+  } catch (error) {
+    console.warn('Failed to sync to Supabase:', error);
+    // Continue with local storage fallback
+  }
+}

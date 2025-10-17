@@ -1,4 +1,10 @@
 export type AttendanceStatus = 'present' | 'present-voting' | 'absent';
+export { Speaker } from './shared/speaker'; // Re-export, don't duplicate
+export type Country = {
+  name: string;
+  code: string;
+  attendance: AttendanceStatus;
+};
 
 export type Speaker = {
   id?: string;
