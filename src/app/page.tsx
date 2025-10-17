@@ -1,21 +1,29 @@
-// src/app/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Clock, Layout, Loader2 } from "lucide-react"
+import { Plus, Clock, Layout, Loader2, LogIn } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { useCommittee } from "@/lib/committee-context"
 import CommitteeSetupModal from "@/components/committee-setup-modal"
 import { logSessionStart } from "@/lib/logging"
 import { saveCommittee } from "@/lib/session-storage"
 import { 
   getRecentCommittees, 
+  saveCommitteeToDatabase,
   updateCommitteeAccess,
   getCommitteeById 
 } from "@/lib/supabase/committees"
-import { createCommitteeAction } from "@/lib/actions/committees"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock templates
 const templates = [
@@ -26,25 +34,41 @@ const templates = [
 
 export default function Page() {
   const [setupModalOpen, setSetupModalOpen] = useState(false)
+  const [authGateOpen, setAuthGateOpen] = useState(false)
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false)
+  const [signupDialogOpen, setSignupDialogOpen] = useState(false)
   const [recentCommittees, setRecentCommittees] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { setCommittee } = useCommittee()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
 
-  // Load recent committees on mount
   useEffect(() => {
     loadRecentCommittees()
-  }, [])
+  }, [user])
 
   const loadRecentCommittees = async () => {
     setIsLoading(true)
     try {
-      const committees = await getRecentCommittees(6)
-      setRecentCommittees(committees)
+      if (user) {
+        const committees = await getRecentCommittees(6)
+        setRecentCommittees(committees)
+      } else {
+        setRecentCommittees([])
+      }
     } catch (error) {
       console.error('Error loading recent committees:', error)
+      setRecentCommittees([])
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleCreateCommitteeClick = () => {
+    if (!user) {
+      setAuthGateOpen(true)
+    } else {
+      setSetupModalOpen(true)
     }
   }
 
@@ -60,17 +84,23 @@ export default function Page() {
     settings?: any
   }) => {
     try {
-      console.log('Setting up committee with data:', data)
+      console.log('Setting up committee with data:', data);
       
-      // Call server action
-      const result = await createCommitteeAction(data)
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create committee')
-      }
+      const savedCommittee = await saveCommitteeToDatabase(
+        {
+          name: data.name,
+          abbrev: data.abbrev,
+          agenda: data.agenda,
+          chair: data.chair,
+          coChair: data.coChair,
+          rapporteur: data.rapporteur,
+          settings: data.settings || {}
+        },
+        data.countries
+      );
 
       const committeeData = {
-        id: result.committee_id,
+        id: savedCommittee.committee_id || savedCommittee.id,
         name: data.name,
         abbrev: data.abbrev,
         agenda: data.agenda,
@@ -90,44 +120,49 @@ export default function Page() {
           notificationsEnabled: data.settings?.notificationsEnabled ?? true,
           speakingTime: data.settings?.speakingTime ?? 120
         }
-      }
+      };
 
-      logSessionStart(`Committee prepared: ${data.name}`, data.countries.length)
-      console.log('Saving committee data:', committeeData)
+      logSessionStart(`Committee prepared: ${data.name}`, data.countries.length);
+      console.log('Saving committee data:', committeeData);
 
-      saveCommittee(committeeData)
-      setCommittee(committeeData)
+      saveCommittee(committeeData);
+      setCommittee(committeeData);
 
-      // Reload recent committees
-      await loadRecentCommittees()
+      await loadRecentCommittees();
 
-      // Navigate to speaker list
-      router.push(`/speaker-list?committee=${result.committee_id}`)
+      router.push(`/speaker-list?committee=${committeeData.id}`);
     } catch (error) {
-      console.error('Error setting up committee:', error)
-      alert(`Failed to create committee: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('Error setting up committee:', error);
+      alert('Failed to create committee. Please try again.');
     }
     setSetupModalOpen(false)
   }
 
   const handleCommitteeClick = async (committeeId: string) => {
     try {
-      // Update last accessed time
-      await updateCommitteeAccess(committeeId)
+      await updateCommitteeAccess(committeeId);
       
-      // Load full committee data
-      const fullCommittee = await getCommitteeById(committeeId)
+      const fullCommittee = await getCommitteeById(committeeId);
       
-      // Set in context and session storage
-      saveCommittee(fullCommittee)
-      setCommittee(fullCommittee)
+      saveCommittee(fullCommittee);
+      setCommittee(fullCommittee);
       
-      // Navigate to speaker list
-      router.push(`/speaker-list?committee=${committeeId}`)
+      router.push(`/speaker-list?committee=${committeeId}`);
     } catch (error) {
-      console.error('Error loading committee:', error)
-      alert('Failed to load committee. Please try again.')
+      console.error('Error loading committee:', error);
+      alert('Failed to load committee. Please try again.');
     }
+  }
+
+  if (authLoading) {
+    return (
+      <main className="min-h-dvh flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -137,6 +172,65 @@ export default function Page() {
         onOpenChange={setSetupModalOpen}
         onSetupComplete={handleSetupComplete}
       />
+
+      {/* Authentication Gate Dialog */}
+      <Dialog open={authGateOpen} onOpenChange={setAuthGateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-2 text-center">
+            <DialogTitle className="text-2xl">Welcome to Vox Chair</DialogTitle>
+            <DialogDescription>
+              Create and manage Model UN committees with ease
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm text-muted-foreground py-4">
+            <p className="flex items-start gap-3">
+              <span className="text-primary text-lg">✓</span>
+              <span>Create and manage multiple committees</span>
+            </p>
+            <p className="flex items-start gap-3">
+              <span className="text-primary text-lg">✓</span>
+              <span>Manage speaker lists and timing</span>
+            </p>
+            <p className="flex items-start gap-3">
+              <span className="text-primary text-lg">✓</span>
+              <span>Track motions and voting</span>
+            </p>
+            <p className="flex items-start gap-3">
+              <span className="text-primary text-lg">✓</span>
+              <span>Create and share draft resolutions</span>
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline"
+              onClick={() => setAuthGateOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => {
+                setAuthGateOpen(false)
+                setLoginDialogOpen(true)
+              }}
+            >
+              <LogIn className="mr-2 h-4 w-4" />
+              Log In
+            </Button>
+            <Button 
+              onClick={() => {
+                setAuthGateOpen(false)
+                setSignupDialogOpen(true)
+              }}
+            >
+              Sign Up
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="mx-auto max-w-7xl px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -144,7 +238,7 @@ export default function Page() {
             <h1 className="text-3xl font-bold">Committees</h1>
             <p className="text-muted-foreground">Manage and create your committees</p>
           </div>
-          <Button onClick={() => setSetupModalOpen(true)} size="lg">
+          <Button onClick={handleCreateCommitteeClick} size="lg">
             <Plus className="mr-2 h-5 w-5" />
             Create New Committee
           </Button>
@@ -167,7 +261,7 @@ export default function Page() {
                 <Clock className="h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-lg font-medium text-muted-foreground mb-2">No recent committees</p>
                 <p className="text-sm text-muted-foreground mb-4">Create your first committee to get started</p>
-                <Button onClick={() => setSetupModalOpen(true)}>
+                <Button onClick={handleCreateCommitteeClick}>
                   <Plus className="mr-2 h-4 w-4" />
                   Create Committee
                 </Button>
