@@ -145,36 +145,32 @@ function TimerControls({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
       <Button
-        variant="outline"
         size="lg"
-        className="h-16 bg-black hover:bg-black text-white hover:text-neutral-400 hover:border-b-neutral-500 flex-wrap"
+        className="h-16 flex-wrap"
         onClick={onYield}
       >
         <MixerHorizontalIcon className="mr-2 h-5 w-5 shrink-0" />
         <span className="truncate">Yield</span>
       </Button>
       <Button
-        variant="outline"
         size="lg"
-        className="h-16 bg-black hover:bg-black text-white hover:text-neutral-400 hover:border-b-neutral-500 flex-wrap"
+        className="h-16 flex-wrap"
         onClick={onSettings}
       >
         <GearIcon className="mr-2 h-5 w-5 shrink-0" />
         <span className="truncate">Speaking Time</span>
       </Button>
       <Button
-        variant="outline"
         size="lg"
-        className="h-16 bg-black hover:bg-black text-white hover:text-neutral-400 hover:border-b-neutral-500 flex-wrap"
+        className="h-16 flex-wrap"
         onClick={onReset}
       >
         <ReloadIcon className="mr-2 h-5 w-5 shrink-0" />
         <span className="truncate">Reset</span>
       </Button>
       <Button
-        variant="outline"
         size="lg"
-        className="h-16 bg-black hover:bg-black text-white hover:text-neutral-400 hover:border-b-neutral-500 flex-wrap"
+        className="h-16 flex-wrap"
         onClick={onStart}
       >
         <PlayIcon className="mr-2 h-5 w-5 shrink-0" />
