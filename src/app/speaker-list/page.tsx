@@ -767,7 +767,7 @@ useEffect(() => {
     }
 
     // Get session data once
-    const sessionData = getSessionData() || {};
+    const sessionData = getSessionData();
     const activeMotion = motions.find(m => m.id === activeMotionId);
     const isProposer = activeMotion?.proposingCountry === speaker.name;
 
@@ -784,13 +784,14 @@ useEffect(() => {
         setSpeakerQueue(newState.queue);
       }
 
-      // Update session storage
-      updateSessionData({
-        ...sessionData,
-        id: sessionData.id || '',
-        currentSpeaker: newState.currentSpeaker || sessionData.currentSpeaker,
-        speakerQueue: newState.queue || sessionData.speakerQueue
-      });
+      // Update session storage with full committee data
+      if (sessionData && committee) {
+        updateSessionData({
+          ...committee,
+          currentSpeaker: newState.currentSpeaker || sessionData.currentSpeaker,
+          speakerQueue: newState.queue || sessionData.speakerQueue
+        } as any);
+      }
     };
 
     // Handle active motion case
@@ -804,18 +805,18 @@ useEffect(() => {
 
     // Handle normal case (no motion or non-proposer)
     if (!currentSpeaker && !isYielded) {
-  // Add as current speaker if position is empty
-  setTotalTime(timeInSeconds);  // Use default time
-  setCurrentTime(timeInSeconds);  // Use default time
-  updateSpeakerState({ currentSpeaker: newSpeaker });
-  toast.success(`${speaker.name} added as current speaker`);
-  logSpeakerAdded(newSpeaker, 'current');
-}else {
+    // Add as current speaker if position is empty
+    setTotalTime(timeInSeconds);  // Use default time
+    setCurrentTime(timeInSeconds);  // Use default time
+    updateSpeakerState({ currentSpeaker: newSpeaker });
+    toast.success(`${speaker.name} added as current speaker`);
+    logSpeakerAdded(speaker.name);
+    } else {
       // Add to queue
       const newQueue = [...speakerQueue, newSpeaker];
       updateSpeakerState({ queue: newQueue });
       toast.success(`${speaker.name} added to speaker queue`);
-      logSpeakerAdded(newSpeaker, 'queue');
+      logSpeakerAdded(speaker.name);
     }
   };
 
@@ -845,7 +846,7 @@ useEffect(() => {
 };
 
   // Function to handle motion status changes
-  const handleMotionStatusChange = (motionId: string, newStatus: "Pending" | "In Progress" | "Completed") => {
+  const handleMotionStatusChange = (motionId: string, newStatus: MotionStatus) => {
     setMotions(prev => prev.map(m => {
       if (m.id === motionId) {
         // When a motion starts, set proposer as current speaker
@@ -856,7 +857,7 @@ useEffect(() => {
             setSpeakerQueue([]);
           }
         }
-        return { ...m, status: newStatus };
+        return { ...m, status: newStatus } as Motion;
       }
       return m;
     }));
@@ -930,15 +931,13 @@ useEffect(() => {
     type: "Extension",
     name: `Extension of ${originalMotion.name}`,
     createdAt: new Date().toISOString(),
-    status: passed ? "Passed" : "Failed",  // SET STATUS BASED ON VOTE
+    status: passed ? "Passed" : "Failed" as MotionStatus,  // SET STATUS BASED ON VOTE
     duration: additionalDuration,  // Keep in minutes for consistency
     speakingTime: newSpeakingTime,
     parentMotionId: motionId,
     proposingCountry,
-    totalTime: additionalDuration,
-    currentSpeakerIndex: 0,
     speakers: [],
-    committeeId: originalMotion.committeeId || committeeName
+    currentSpeakerIndex: 0
   };
 
     // If passed, update the parent motion immediately
@@ -948,7 +947,6 @@ useEffect(() => {
         return {
           ...motion,
           duration: (motion.duration || 0) + additionalDuration,
-          totalTime: (motion.totalTime || 0) + additionalDuration,
           speakingTime: newSpeakingTime
         };
       }
@@ -963,7 +961,7 @@ useEffect(() => {
           ...updatedMotion,
           duration: (updatedMotion.duration || 0) + additionalDuration,
           speakingTime: newSpeakingTime
-        });
+        } as Motion);
       }
     }
 
@@ -1019,11 +1017,12 @@ useEffect(() => {
           const proposer = allMembers.find(m => m.name === currentMotion.proposingCountry);
           if (proposer) {
             setCurrentSpeaker(proposer);
-            const sessionData = getSessionData();
-            updateSessionData({
-              ...sessionData,
-              currentSpeaker: proposer,
-            });
+            if (committee) {
+              updateSessionData({
+                ...committee,
+                currentSpeaker: proposer,
+              } as any);
+            }
           }
         }
 
@@ -1035,8 +1034,7 @@ useEffect(() => {
             const updatedParent = {
               ...parent,
               duration: (parent.duration || 0) + (currentMotion.duration || 0),
-              totalTime: (parent.totalTime || 0) + (currentMotion.totalTime || 0),
-              speakingTime: currentMotion.useSameTimings 
+              speakingTime: (currentMotion.speakingTime)
                 ? parent.speakingTime
                 : currentMotion.speakingTime
             };
@@ -1157,12 +1155,13 @@ useEffect(() => {
       logSpeakerRemoved(speakerToRemove.name);
       
       // Update storage
-      updateSessionData({
-        ...sessionData,
-        id: sessionData.id || '',
-        currentSpeaker: nextSpeaker,
-        speakerQueue: newQueue
-      });
+      if (committee) {
+        updateSessionData({
+          ...committee,
+          currentSpeaker: nextSpeaker,
+          speakerQueue: newQueue
+        } as any);
+      }
 
       // Show appropriate toast
       if (nextSpeaker && speakerToRemove.id === currentSpeaker?.id) {
@@ -1222,9 +1221,7 @@ useEffect(() => {
           newQueue,
           speakerToRemove
         });
-      }
-      if (speaker) {
-        logSpeakerRemoved(speaker.name);
+        logSpeakerRemoved(speakerToRemove.name);
       }
       setSpeakerQueue(speakerQueue.filter((s) => s.id !== id));
     }
@@ -1341,20 +1338,21 @@ useEffect(() => {
   setTotalTime(nextSpeakerTotalTime);
   setIsRunning(false);
 
-  logSpeakerYield(currentSpeaker.name, speaker.name, yieldedTimeAmount);
+  const mins = Math.floor(yieldedTimeAmount / 60);
+  const secs = yieldedTimeAmount % 60;
+  const timeString = `${mins}:${secs.toString().padStart(2, '0')}`;
+  logSpeakerYield(currentSpeaker.name, speaker.name, timeString);
   
   const storedData = getSessionData();
-  if (storedData) {
+  if (storedData && committee) {
     updateSessionData({
-      ...storedData,
+      ...committee,
       currentSpeaker: nextSpeaker,
       speakerQueue: remainingQueue,
-    });
+    } as any);
   }
   
   toast.dismiss(toastId);
-  const mins = Math.floor(yieldedTimeAmount / 60);
-  const secs = yieldedTimeAmount % 60;
   toast.success(`${currentSpeaker.name} yielded ${mins}:${secs.toString().padStart(2, '0')} to ${speaker.name}`);
   if (nextSpeaker) {
     if (nextSpeaker.yieldedTime && nextSpeaker.yieldedTime > 0) {
@@ -1619,7 +1617,10 @@ useEffect(() => {
   motions={motions.filter(m => !m.parentMotionId || m.type !== "Extension")}
   onVote={handleMotionVote}
   onAdjournMotion={handleAdjournMotion}
-  onStatusChange={handleMotionStatusChange}
+  onStatusChange={(motionId: string, newStatus: "Pending" | "In Progress" | "Completed") => {
+    const mappedStatus: MotionStatus = newStatus === "Completed" ? "Passed" : newStatus;
+    handleMotionStatusChange(motionId, mappedStatus);
+  }}
   onExtendMotion={handleExtendMotion}
   onEditMotion={() => {}}
   onReorderMotions={() => {}}
@@ -1724,11 +1725,7 @@ useEffect(() => {
               onAdd={(speaker) => {
                 handleAddSpeaker(speaker);
                 // Log the addition
-                logSpeakerAdded({
-                  speakerId: speaker.id,
-                  speakerName: speaker.name,
-                  position: speakerQueue.length + 1
-                });
+                logSpeakerAdded(speaker.name);
 
                 if (activeMotionId) {
                   // Add to motion's speaker list
@@ -1754,7 +1751,7 @@ useEffect(() => {
         onOpenChange={setTimeDialogOpen}
         currentTime={totalTime}
         onSave={handleSetTime}
-        activeMotionId={activeMotionId}
+        activeMotionId={activeMotionId || undefined}
         motions={motions}
       />
 
@@ -1775,7 +1772,10 @@ useEffect(() => {
     }}
     originalMotion={extendMotionData.motion}
     onSubmit={handleExtendMotionSubmit}
-    countries={committee?.countryList || []}
+    countries={(committee?.countryList || []).map(c => ({ 
+      ...c, 
+      code: c.id 
+    }))}
     enableVoting={committee?.settings?.enableVoting ?? true}
   />
 )}
