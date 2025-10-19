@@ -173,20 +173,42 @@ export async function getCommitteeById(committeeId: string) {
 
     if (membersError) throw membersError;
 
+    // Extract settings
+    const settings = committee.settings || {};
+    const chair = settings.chair || '';
+    const coChair = settings.coChair || '';
+    const rapporteur = settings.rapporteur || '';
+
     return {
-      ...committee,
-      countries: members.map(m => ({
+      id: committee.id,
+      name: committee.name,
+      abbrev: committee.abbrev,
+      agenda: committee.agenda,
+      chair,
+      coChair,
+      rapporteur,
+      countries: (members || []).map(m => ({
         name: m.name,
         code: m.code,
         attendance: m.attendance
       })),
-      countryList: members.map(m => ({
+      countryList: (members || []).map(m => ({
         id: m.code.toLowerCase(),
         name: m.name,
-        code: m.code.toLowerCase(),
         flagQuery: m.code.toLowerCase(),
         attendance: m.attendance
-      }))
+      })),
+      settings: {
+        enableMotions: settings.enableMotions ?? true,
+        enableVoting: settings.enableVoting ?? true,
+        showTimer: settings.showTimer ?? true,
+        showSpeakerList: settings.showSpeakerList ?? true,
+        showMotions: settings.showMotions ?? true,
+        recordSession: settings.recordSession ?? true,
+        autoSaveDrafts: settings.autoSaveDrafts ?? true,
+        notificationsEnabled: settings.notificationsEnabled ?? true,
+        speakingTime: settings.speakingTime ?? 120
+      }
     };
   } catch (error) {
     console.error('Error fetching committee:', error);

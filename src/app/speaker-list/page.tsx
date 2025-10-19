@@ -575,7 +575,8 @@ function UpcomingSpeakers({
 
 export default function SessionPage() {
   const { setTitle } = useHeader()
-  const { committee } = useCommittee()
+  const { committee, setCommittee } = useCommittee()
+  const [loadingCommittee, setLoadingCommittee] = useState(!committee)
   
   // View state for timer/motions toggle
   const [view, setView] = useState<'timer' | 'motions'>('timer');
@@ -586,21 +587,57 @@ export default function SessionPage() {
   const [currentSpeaker, setCurrentSpeaker] = useState<Speaker | null>(null);
   const [speakerQueue, setSpeakerQueue] = useState<Speaker[]>([]);
 
+  // Load committee from URL param if not in context
+  useEffect(() => {
+    const loadCommitteeFromUrl = async () => {
+      if (committee) {
+        setLoadingCommittee(false);
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const committeeId = params.get('committee');
+
+        if (!committeeId) {
+          console.warn('No committee ID in URL');
+          setLoadingCommittee(false);
+          return;
+        }
+
+        console.log('Loading committee from URL:', committeeId);
+        const { getCommitteeById } = await import('@/lib/supabase/committees');
+        const fullCommittee = await getCommitteeById(committeeId);
+        
+        if (fullCommittee) {
+          setCommittee(fullCommittee);
+          console.log('Committee loaded from URL:', fullCommittee);
+        }
+      } catch (error) {
+        console.error('Error loading committee from URL:', error);
+      } finally {
+        setLoadingCommittee(false);
+      }
+    };
+
+    loadCommitteeFromUrl();
+  }, [committee, setCommittee]);
+
   // Initialize members from committee data
   useEffect(() => {
     if (committee?.countryList) {
-      // Create a Map to ensure unique country codes
+      // Create a Map to ensure unique countries by id
       const uniqueCountries = new Map();
       
-      // Process each country and ensure uniqueness by code
+      // Process each country and ensure uniqueness by id
       committee.countryList.forEach(country => {
-        if (country.code && !uniqueCountries.has(country.code)) {
-          uniqueCountries.set(country.code, {
-            id: `country-${country.code}`, // Create unique ID
-            code: country.code.toLowerCase(),
+        if (country.id && !uniqueCountries.has(country.id)) {
+          uniqueCountries.set(country.id, {
+            id: country.id,
+            code: country.id.toLowerCase(),
             name: country.name,
-            flagQuery: country.code.toLowerCase(),
-            attendance: committee.countries?.find(c => c.code === country.code)?.attendance || 'present'
+            flagQuery: country.flagQuery || country.id.toLowerCase(),
+            attendance: country.attendance || 'present'
           });
         }
       });
@@ -1464,6 +1501,33 @@ useEffect(() => {
 
   // Get available speakers based on attendance status
   // Available speakers are now handled by SpeakerAttendance component
+
+  if (loadingCommittee) {
+    return (
+      <div className="min-h-dvh bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Skeleton className="h-12 w-12 rounded-full mx-auto" />
+          <p className="text-muted-foreground">Loading committee...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!committee) {
+    return (
+      <div className="min-h-dvh bg-background flex items-center justify-center">
+        <Card className="p-8 max-w-md">
+          <h2 className="text-lg font-semibold mb-2">Committee Not Found</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            The committee you're trying to access could not be loaded.
+          </p>
+          <Button onClick={() => window.location.href = '/'}>
+            Return to Home
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-background">
