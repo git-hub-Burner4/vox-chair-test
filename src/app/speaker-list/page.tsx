@@ -145,6 +145,7 @@ function TimerControls({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
       <Button
+        variant="outline"
         size="lg"
         className="h-16 flex-wrap"
         onClick={onYield}
@@ -153,6 +154,7 @@ function TimerControls({
         <span className="truncate">Yield</span>
       </Button>
       <Button
+        variant="outline"
         size="lg"
         className="h-16 flex-wrap"
         onClick={onSettings}
@@ -161,6 +163,7 @@ function TimerControls({
         <span className="truncate">Speaking Time</span>
       </Button>
       <Button
+        variant="outline"
         size="lg"
         className="h-16 flex-wrap"
         onClick={onReset}
@@ -169,6 +172,7 @@ function TimerControls({
         <span className="truncate">Reset</span>
       </Button>
       <Button
+        variant="outline"
         size="lg"
         className="h-16 flex-wrap"
         onClick={onStart}
