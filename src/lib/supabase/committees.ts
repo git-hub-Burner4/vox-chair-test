@@ -56,15 +56,20 @@ export async function saveCommitteeToDatabase(
       .select()
       .single();
 
-    if (committeeError) throw committeeError;
+    if (committeeError) {
+      console.error('Committee insert error:', committeeError);
+      throw committeeError;
+    }
 
-    // Insert members
+    console.log('Committee created:', committee);
+
+    // Insert members - session_id should be a string representation of the bigint id
     if (members.length > 0) {
       const { error: membersError } = await supabase
         .from('session_countries')
         .insert(
           members.map(member => ({
-            session_id: committee.id,
+            session_id: String(committee.id),
             name: member.name,
             code: member.code,
             attendance: member.attendance,
@@ -72,10 +77,13 @@ export async function saveCommitteeToDatabase(
           }))
         );
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('Members insert error:', membersError);
+        throw membersError;
+      }
     }
 
-    return { committee_id: committee.id, ...committee };
+    return { committee_id: String(committee.id), ...committee };
   } catch (error) {
     console.error('Error saving committee:', error);
     throw error;
@@ -127,10 +135,10 @@ export async function getRecentCommittees(limit: number = 6) {
         const { count } = await supabase
           .from('session_countries')
           .select('*', { count: 'exact', head: true })
-          .eq('session_id', committee.id);
+          .eq('session_id', String(committee.id));
 
         return {
-          id: committee.id,
+          id: String(committee.id),
           name: committee.name,
           abbrev: committee.abbrev,
           agenda: committee.agenda,
@@ -160,10 +168,13 @@ export async function getCommitteeById(committeeId: string) {
     const { data: committee, error: committeeError } = await supabase
       .from('committee_sessions')
       .select('*')
-      .eq('id', committeeId)
+      .eq('id', parseInt(committeeId))
       .single();
 
-    if (committeeError) throw committeeError;
+    if (committeeError) {
+      console.error('Committee fetch error:', committeeError);
+      throw committeeError;
+    }
 
     // Get members
     const { data: members, error: membersError } = await supabase
@@ -171,7 +182,10 @@ export async function getCommitteeById(committeeId: string) {
       .select('*')
       .eq('session_id', committeeId);
 
-    if (membersError) throw membersError;
+    if (membersError) {
+      console.error('Members fetch error:', membersError);
+      throw membersError;
+    }
 
     // Extract settings
     const settings = committee.settings || {};
@@ -180,7 +194,7 @@ export async function getCommitteeById(committeeId: string) {
     const rapporteur = settings.rapporteur || '';
 
     return {
-      id: committee.id,
+      id: String(committee.id),
       name: committee.name,
       abbrev: committee.abbrev,
       agenda: committee.agenda,
@@ -226,7 +240,7 @@ export async function updateCommitteeAccess(committeeId: string) {
     const { error } = await supabase
       .from('committee_sessions')
       .update({ updated_at: new Date().toISOString() })
-      .eq('id', committeeId);
+      .eq('id', parseInt(committeeId));
 
     if (error) throw error;
   } catch (error) {
@@ -251,7 +265,7 @@ export async function deleteCommittee(committeeId: string) {
     const { error } = await supabase
       .from('committee_sessions')
       .delete()
-      .eq('id', committeeId);
+      .eq('id', parseInt(committeeId));
 
     if (error) throw error;
   } catch (error) {
