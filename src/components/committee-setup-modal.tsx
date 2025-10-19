@@ -108,7 +108,9 @@ export default function CommitteeSetupModal({
       id: string
       name: string
       flagQuery: string
+      attendance: 'present' | 'absent' | 'present-voting'
     }>
+    settings?: any
   }) => void
 }) {
   const [currentPage, setCurrentPage] = useState<"basic-info" | "members" | "session" | "display" | "advanced">("basic-info")
@@ -194,39 +196,32 @@ export default function CommitteeSetupModal({
 
   const handleExcelImport = async (file: File) => {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
       const text = await file.text();
       const rows = text.split('\n');
-      const countries = rows
-        .map(row => {
-          const [name] = row.split(',');
-          if (!name) return null;
-          
-          const country = countryList.find(c => 
-            c.name.toLowerCase().includes(name.toLowerCase().trim())
-          );
-          
-          if (country) {
-            return {
-              id: country.code,
-              name: country.name,
-              code: country.code,
-              attendance: 'present' as const
-            };
-          }
-          return null;
-        })
-        .filter((c): c is Portfolio => c !== null);
+      const countries: Portfolio[] = [];
+
+      for (const row of rows) {
+        const [name] = row.split(',');
+        if (!name) continue;
+
+        const found = countryList.find(c => c.name.toLowerCase().includes(name.toLowerCase().trim()));
+        if (!found) continue;
+
+        countries.push({
+          id: found.code,
+          name: found.name,
+          code: found.code,
+          attendance: 'present'
+        });
+      }
 
       setPortfolios(prev => {
         const newPortfolios = [...prev];
-        countries.forEach(country => {
+        for (const country of countries) {
           if (!newPortfolios.some(p => p.id === country.id)) {
             newPortfolios.push(country);
           }
-        });
+        }
         return newPortfolios;
       });
     } catch (error) {
@@ -237,7 +232,7 @@ export default function CommitteeSetupModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="min-w-[85vw] max-w-[85vw] w-[85vw] h-[85vh] p-0 gap-0 overflow-hidden">
+        <DialogContent className="min-w-[85vw] max-w-[85vw] w-[85vw] h-[85vh] p-0 gap-0 overflow-hidden" title="Create New Committee">
           <div className="flex h-full">
             {/* Sidebar */}
             <div className="w-64 border-r bg-sidebar flex flex-col shrink-0">
@@ -814,42 +809,40 @@ export default function CommitteeSetupModal({
                 </Button>
                 <Button 
                   onClick={async () => {
-  try {
-    setIsCreating(true);
-    const committeeData = {
-      name: committeeName.trim(),
-      abbrev: shortcode.trim(),
-      agenda: agenda.trim(),
-      chair: chair.trim(),
-      coChair: coChair.trim(),
-      rapporteur: rapporteur.trim(),
-      countries: portfolios.map(portfolio => ({
-        name: portfolio.name,
-        code: portfolio.id.toLowerCase(),
-        attendance: 'present' as const
-      })),
-      countryList: portfolios.map(portfolio => ({
-        id: portfolio.id.toLowerCase(),
-        name: portfolio.name,
-        code: portfolio.id.toLowerCase(),
-        flagQuery: portfolio.id.toLowerCase(),
-        attendance: 'present' as const
-      })),
-      settings: {
-        enableMotions,
-        enableVoting,
-        showTimer,
-        showSpeakerList,
-        showMotions,
-        recordSession,
-        autoSaveDrafts,
-        notificationsEnabled,
-        speakingTime
-      }
-    };
-    
-    await onSetupComplete(committeeData);
-
+                    try {
+                      setIsCreating(true);
+                      const committeeData = {
+                        name: committeeName.trim(),
+                        abbrev: shortcode.trim(),
+                        agenda: agenda.trim(),
+                        chair: chair.trim(),
+                        coChair: coChair.trim(),
+                        rapporteur: rapporteur.trim(),
+                        countries: portfolios.map(portfolio => ({
+                          name: portfolio.name,
+                          code: portfolio.id.toLowerCase(),
+                          attendance: portfolio.attendance || 'present' as const
+                        })),
+                        countryList: portfolios.map(portfolio => ({
+                          id: portfolio.id.toLowerCase(),
+                          name: portfolio.name,
+                          flagQuery: portfolio.id.toLowerCase(),
+                          attendance: portfolio.attendance || 'present' as const
+                        })),
+                        settings: {
+                          enableMotions,
+                          enableVoting,
+                          showTimer,
+                          showSpeakerList,
+                          showMotions,
+                          recordSession,
+                          autoSaveDrafts,
+                          notificationsEnabled,
+                          speakingTime
+                        }
+                      };
+                      
+                      await onSetupComplete(committeeData);
                       router.push('/speaker-list');
                     } catch (error) {
                       console.error('Error creating committee:', error);

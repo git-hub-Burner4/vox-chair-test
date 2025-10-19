@@ -80,7 +80,7 @@ export default function Page() {
     coChair: string
     rapporteur: string
     countries: Array<{ name: string; code: string; attendance: 'present' | 'absent' | 'present-voting' }>
-    countryList: Array<{ id: string; name: string; flagQuery: string }>
+    countryList: Array<{ id: string; name: string; flagQuery: string; attendance?: 'present' | 'absent' | 'present-voting' }>
     settings?: any
   }) => {
     try {
@@ -105,7 +105,12 @@ export default function Page() {
         abbrev: data.abbrev,
         agenda: data.agenda,
         countries: data.countries || [],
-        countryList: data.countryList || [],
+        countryList: (data.countryList || []).map((country: any) => ({
+          id: country.id,
+          name: country.name,
+          flagQuery: country.flagQuery,
+          attendance: (country.attendance as 'present' | 'absent' | 'present-voting') || 'present'
+        })),
         chair: data.chair,
         coChair: data.coChair,
         rapporteur: data.rapporteur,
@@ -175,7 +180,7 @@ export default function Page() {
 
       {/* Authentication Gate Dialog */}
       <Dialog open={authGateOpen} onOpenChange={setAuthGateOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" title="Welcome to Vox Chair">
           <DialogHeader className="space-y-2 text-center">
             <DialogTitle className="text-2xl">Welcome to Vox Chair</DialogTitle>
             <DialogDescription>
