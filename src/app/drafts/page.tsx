@@ -311,7 +311,20 @@ export default function DraftsPage() {
 >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
-                    <h3 className="font-semibold text-lg truncate flex-1">{draft.title}</h3>
+  <h3 
+    className="font-semibold text-lg truncate flex-1 cursor-pointer"
+    onClick={() => {
+      const draftToOpen = drafts.find(d => d.id === draft.id)
+      if (draftToOpen) {
+        setLastEditedDraft(draftToOpen.id, draftToOpen.title)
+        setEditorContent(draftToOpen.content)
+        setIsSaved(true)
+        open()
+      }
+    }}
+  >
+    {draft.title}
+  </h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
   {draft.tags.map((tag) => (
@@ -342,12 +355,12 @@ export default function DraftsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm">
-                          <DotsHorizontalIcon className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
+    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+        <DotsHorizontalIcon className="h-4 w-4" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation()
