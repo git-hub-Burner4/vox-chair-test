@@ -13,6 +13,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Separator } from "@/components/ui/separator"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { createClient } from "@/lib/supabase/client"
 import { useCommittee } from "@/lib/committee-context"
 import CommitteeSetupModal from "@/components/committee-setup-modal"
 import { logSessionStart } from "@/lib/logging"
@@ -236,6 +240,246 @@ export default function Page() {
         </DialogContent>
       </Dialog>
 
+      {/* Login Dialog */}
+<Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
+  <DialogContent className="sm:max-w-[425px]" title="Log In">
+    <DialogHeader>
+      <DialogTitle>Log in to your account</DialogTitle>
+      <DialogDescription>
+        Enter your email and password to access your account
+      </DialogDescription>
+    </DialogHeader>
+    <form onSubmit={async (e) => {
+      e.preventDefault()
+      const formData = new FormData(e.currentTarget)
+      const email = formData.get('email') as string
+      const password = formData.get('password') as string
+      
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      
+      if (error) {
+        alert(error.message)
+      } else {
+        setLoginDialogOpen(false)
+        router.refresh()
+      }
+    }}>
+      <div className="grid gap-4 py-4">
+        <div className="grid gap-2">
+          <Label htmlFor="login-email">Email</Label>
+          <Input
+            id="login-email"
+            name="email"
+            type="email"
+            placeholder="name@example.com"
+            required
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="login-password">Password</Label>
+          <Input
+            id="login-password"
+            name="password"
+            type="password"
+            placeholder="••••••••"
+            required
+          />
+        </div>
+        <Button type="submit" className="w-full">
+          Log in
+        </Button>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <Separator />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                  redirectTo: `${window.location.origin}/auth/callback`,
+                },
+              })
+            }}
+          >
+            Google
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: {
+                  redirectTo: `${window.location.origin}/auth/callback`,
+                },
+              })
+            }}
+          >
+            GitHub
+          </Button>
+        </div>
+        <div className="text-center text-sm">
+          Don&apos;t have an account?{" "}
+          <Button
+            type="button"
+            variant="link"
+            className="p-0 h-auto font-normal"
+            onClick={() => {
+              setLoginDialogOpen(false)
+              setSignupDialogOpen(true)
+            }}
+          >
+            Sign up
+          </Button>
+        </div>
+      </div>
+    </form>
+  </DialogContent>
+</Dialog>
+
+{/* Signup Dialog */}
+<Dialog open={signupDialogOpen} onOpenChange={setSignupDialogOpen}>
+  <DialogContent className="sm:max-w-[425px]" title="Sign Up">
+    <DialogHeader>
+      <DialogTitle>Create an account</DialogTitle>
+      <DialogDescription>
+        Enter your details to create your account
+      </DialogDescription>
+    </DialogHeader>
+    <form onSubmit={async (e) => {
+      e.preventDefault()
+      const formData = new FormData(e.currentTarget)
+      const name = formData.get('name') as string
+      const email = formData.get('email') as string
+      const password = formData.get('password') as string
+      
+      const supabase = createClient()
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      })
+      
+      if (error) {
+        alert(error.message)
+      } else {
+        setSignupDialogOpen(false)
+        alert("Check your email to verify your account!")
+        router.refresh()
+      }
+    }}>
+      <div className="grid gap-4 py-4">
+        <div className="grid gap-2">
+          <Label htmlFor="signup-name">Name</Label>
+          <Input
+            id="signup-name"
+            name="name"
+            type="text"
+            placeholder="John Doe"
+            required
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="signup-email">Email</Label>
+          <Input
+            id="signup-email"
+            name="email"
+            type="email"
+            placeholder="name@example.com"
+            required
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="signup-password">Password</Label>
+          <Input
+            id="signup-password"
+            name="password"
+            type="password"
+            placeholder="••••••••"
+            required
+            minLength={6}
+          />
+        </div>
+        <Button type="submit" className="w-full">
+          Sign up
+        </Button>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <Separator />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                  redirectTo: `${window.location.origin}/auth/callback`,
+                },
+              })
+            }}
+          >
+            Google
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: {
+                  redirectTo: `${window.location.origin}/auth/callback`,
+                },
+              })
+            }}
+          >
+            GitHub
+          </Button>
+        </div>
+        <div className="text-center text-sm">
+          Already have an account?{" "}
+          <Button
+            type="button"
+            variant="link"
+            className="p-0 h-auto font-normal"
+            onClick={() => {
+              setSignupDialogOpen(false)
+              setLoginDialogOpen(true)
+            }}
+          >
+            Log in
+          </Button>
+        </div>
+      </div>
+    </form>
+  </DialogContent>
+</Dialog>
       <div className="mx-auto max-w-7xl px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
