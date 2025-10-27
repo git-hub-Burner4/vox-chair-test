@@ -40,6 +40,7 @@ import jsPDF from 'jspdf'
 type Draft = {
   id: string
   title: string
+  description?: string
   content: string
   createdAt: Date
   updatedAt: Date
@@ -131,6 +132,7 @@ export default function DraftsPage() {
     const newDraft: Draft = {
   id: crypto.randomUUID(),
   title: draftName,
+  description: "",
   content: "",
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -228,14 +230,19 @@ export default function DraftsPage() {
     setIsShareDialogOpen(true)
   }
 
-  const handleCopyShareLink = () => {
-  if (draftToShare) {
-    const shareLink = `${window.location.origin}/drafts?id=${draftToShare.id}`
-    navigator.clipboard.writeText(shareLink)
-    toast.success("Link copied to clipboard")
-    setIsShareDialogOpen(false)
+  const handleCopyShareLink = async () => {
+    if (draftToShare) {
+      try {
+        const shareLink = `${window.location.origin}/drafts?id=${draftToShare.id}`
+        await navigator.clipboard.writeText(shareLink)
+        toast.success("Link copied to clipboard")
+        setIsShareDialogOpen(false)
+      } catch (err) {
+        console.error('Failed to copy:', err)
+        toast.error("Failed to copy link")
+      }
+    }
   }
-}
 
   const archivedCount = drafts.filter(d => d.archived).length
 
@@ -289,7 +296,7 @@ export default function DraftsPage() {
             {filteredDrafts.map((draft) => (
               <Card 
   key={draft.id} 
-  className="p-6 hover:shadow-lg transition-shadow cursor-pointer relative group"
+  className="p-6 hover:shadow-lg transition-shadow relative group"
   onMouseEnter={() => setHoveredDraft(draft.id)}
   onMouseLeave={() => setHoveredDraft(null)}
   onClick={() => {
@@ -305,9 +312,6 @@ export default function DraftsPage() {
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
                     <h3 className="font-semibold text-lg truncate flex-1">{draft.title}</h3>
-                    {hoveredDraft === draft.id && (
-                      <ChevronRightIcon className="h-5 w-5 text-muted-foreground transition-opacity" />
-                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
   {draft.tags.map((tag) => (
@@ -325,6 +329,11 @@ export default function DraftsPage() {
   <div className="text-xs text-muted-foreground mt-1">
     Committee: {draft.committeeName}
   </div>
+)}
+{draft.description && (
+  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+    {draft.description}
+  </p>
 )}
 <div className="flex items-center justify-between">
   <div className="text-sm text-muted-foreground">
