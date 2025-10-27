@@ -63,6 +63,8 @@ const DRAFT_TYPES: DraftType[] = [
 
 export default function DraftsPage() {
 
+  const [drafts, setDrafts] = useState<Draft[]>([])
+
   const { committee } = useCommittee()
   const [searchQuery, setSearchQuery] = useState("")
   const [isNewDraftOpen, setIsNewDraftOpen] = useState(false)
