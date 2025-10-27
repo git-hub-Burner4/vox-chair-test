@@ -209,29 +209,29 @@ export default function Page() {
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button 
-              variant="outline"
-              onClick={() => setAuthGateOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => {
-                setAuthGateOpen(false)
-                setLoginDialogOpen(true)
-              }}
-            >
-              <LogIn className="mr-2 h-4 w-4" />
-              Log In
-            </Button>
-            <Button 
-              onClick={() => {
-                setAuthGateOpen(false)
-                setSignupDialogOpen(true)
-              }}
-            >
-              Sign Up
-            </Button>
+  variant="outline"
+  onClick={() => setAuthGateOpen(false)}
+>
+  Cancel
+</Button>
+<Button 
+  variant="outline"
+  onClick={() => {
+    setAuthGateOpen(false)
+    setLoginDialogOpen(true)
+  }}
+>
+  <LogIn className="mr-2 h-4 w-4" />
+  Log In
+</Button>
+<Button 
+  onClick={() => {
+    setAuthGateOpen(false)
+    setSignupDialogOpen(true)
+  }}
+>
+  Sign Up
+</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
