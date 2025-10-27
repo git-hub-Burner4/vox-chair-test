@@ -58,38 +58,45 @@ export function SpeakerAttendance({
   const [availableSpeakers, setAvailableSpeakers] = useState<Speaker[]>([])
 
   useEffect(() => {
-    if (committee?.countryList) {
-      // Create a Map to store unique countries by code
-      const uniqueCountries = new Map();
+  console.log('=== SpeakerAttendance: Loading Countries ===');
+  console.log('Committee:', committee);
+  console.log('CountryList:', committee?.countryList);
+  console.log('Countries:', committee?.countries);
+  
+  if (!committee) {
+    console.warn('No committee available');
+    setAvailableSpeakers([]);
+    return;
+  }
+
+  // Create speakers from countryList (which has the full list)
+  const speakers: Speaker[] = [];
+  
+  // Use countryList as the source
+  if (committee.countryList && Array.isArray(committee.countryList)) {
+    committee.countryList.forEach(country => {
+      // Find matching attendance from countries array
+      const countryData = committee.countries?.find(c => 
+        c.code?.toLowerCase() === country.id?.toLowerCase() ||
+        c.code?.toLowerCase() === country.flagQuery?.toLowerCase()
+      );
       
-      // First, process the countryList
-      committee.countryList.forEach(country => {
-        if (country.code && !uniqueCountries.has(country.code)) {
-          uniqueCountries.set(country.code, {
-            id: country.code,
-            code: country.code,
-            name: country.name,
-            flagQuery: country.code.toLowerCase(),
-            attendance: 'absent' // Default to present
-          });
-        }
-      });
+      const speaker: Speaker = {
+        id: country.id || country.flagQuery || country.name.toLowerCase(),
+        code: country.flagQuery || country.id || country.name.substring(0, 2).toLowerCase(),
+        name: country.name,
+        flagQuery: country.flagQuery || country.id || country.name.substring(0, 2).toLowerCase(),
+        attendance: countryData?.attendance || country.attendance || 'absent'
+      };
       
-      // Then update attendance from countries array
-      committee.countries?.forEach(country => {
-        if (country.code && uniqueCountries.has(country.code)) {
-          const existing = uniqueCountries.get(country.code);
-          uniqueCountries.set(country.code, {
-            ...existing,
-            attendance: country.attendance
-          });
-        }
-      });
-      
-      console.log('Unique countries:', Array.from(uniqueCountries.values()));
-      setAvailableSpeakers(Array.from(uniqueCountries.values()));
-    }
-  }, [committee])
+      speakers.push(speaker);
+    });
+  }
+  
+  console.log('Processed speakers:', speakers);
+  setAvailableSpeakers(speakers);
+}, [committee]);
+
   const [view, setView] = useState<'attendance' | 'speakers'>('speakers')
   const [searchOpen, setSearchOpen] = useState(false)
   const [selectedSpeaker, setSelectedSpeaker] = useState<string>("")

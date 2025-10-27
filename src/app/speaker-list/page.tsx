@@ -621,34 +621,46 @@ export default function SessionPage() {
 
   // Initialize members from committee data
   useEffect(() => {
-    if (committee?.countryList) {
-      // Create a Map to ensure unique countries by id
-      const uniqueCountries = new Map();
+  console.log('=== Speaker List Page: Loading Members ===');
+  console.log('Committee:', committee);
+  
+  if (!committee?.countryList) {
+    console.log('No committee data found');
+    setAllMembers([]);
+    return;
+  }
+
+  // Create a Map to ensure unique countries by id
+  const uniqueCountries = new Map();
+  
+  // Process each country
+  committee.countryList.forEach(country => {
+    const countryId = country.id || country.flagQuery || country.name.toLowerCase();
+    
+    if (!uniqueCountries.has(countryId)) {
+      // Find matching country data for attendance
+      const countryData = committee.countries?.find(c => 
+        c.code?.toLowerCase() === countryId.toLowerCase() ||
+        c.code?.toLowerCase() === country.flagQuery?.toLowerCase()
+      );
       
-      // Process each country and ensure uniqueness by id
-      committee.countryList.forEach(country => {
-        if (country.id && !uniqueCountries.has(country.id)) {
-          uniqueCountries.set(country.id, {
-            id: country.id,
-            code: country.id.toLowerCase(),
-            name: country.name,
-            flagQuery: country.flagQuery || country.id.toLowerCase(),
-            attendance: country.attendance || 'present'
-          });
-        }
+      uniqueCountries.set(countryId, {
+        id: countryId,
+        code: countryId,
+        name: country.name,
+        flagQuery: country.flagQuery || countryId,
+        attendance: countryData?.attendance || country.attendance || 'present'
       });
-      
-      // Convert Map values to array and sort by name
-      const members = Array.from(uniqueCountries.values())
-        .sort((a, b) => a.name.localeCompare(b.name));
-      
-      console.log('Speaker List: Setting unique members:', members);
-      setAllMembers(members);
-    } else {
-      console.log('Speaker List: No committee data found');
-      setAllMembers([]);
     }
-  }, [committee]);  // Timer state
+  });
+  
+  // Convert Map values to array and sort by name
+  const members = Array.from(uniqueCountries.values())
+    .sort((a, b) => a.name.localeCompare(b.name));
+  
+  console.log('Speaker List: Setting unique members:', members.length);
+  setAllMembers(members);
+}, [committee]);
   
   const [currentTime, setCurrentTime] = useState(120);
 const [timeInSeconds, setTimeInSeconds] = useState(120);

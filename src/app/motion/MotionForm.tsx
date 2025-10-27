@@ -65,34 +65,47 @@ export const MotionForm = ({ committeeId, onSubmit, onCancel }: MotionFormProps)
   const { committee } = useCommittee();
 
   useEffect(() => {
-    if (!committee?.countryList) {
-      console.warn('No committee or country list available');
-      return;
-    }
+  console.log("=== MotionForm: Loading Countries ===");
+  console.log("Committee:", committee);
+  
+  if (!committee?.countryList) {
+    console.warn('No committee or country list available');
+    setPresentCountries([]);
+    return;
+  }
 
-    // Check if motions are enabled
-if (committee.settings && committee.settings.enableMotions === false) {
-  toast.error("Motions are disabled in committee settings");
-  onCancel();
-  return;
-}
+  // Check if motions are enabled
+  if (committee.settings && committee.settings.enableMotions === false) {
+    toast.error("Motions are disabled in committee settings");
+    onCancel();
+    return;
+  }
 
-    // Get only present and present-voting countries
-    const activeCountries = committee.countryList
-      .filter(c => c.attendance === 'present' || c.attendance === 'present-voting')
-      .map(c => ({
-        id: c.id || `${c.name}-${c.flagQuery}`,
-        name: c.name,
-        flagQuery: c.flagQuery
-      }));
+  // Get countries with their attendance from the countries array
+  const activeCountries = committee.countryList
+    .map(country => {
+      // Find matching country data for attendance
+      const countryData = committee.countries?.find(c => 
+        c.code?.toLowerCase() === country.id?.toLowerCase() ||
+        c.code?.toLowerCase() === country.flagQuery?.toLowerCase()
+      );
+      
+      return {
+        id: country.id || country.flagQuery || `${country.name}-${country.flagQuery}`,
+        name: country.name,
+        flagQuery: country.flagQuery || country.id || country.name.substring(0, 2).toLowerCase(),
+        attendance: countryData?.attendance || country.attendance || 'absent'
+      };
+    })
+    .filter(c => c.attendance === 'present' || c.attendance === 'present-voting');
 
-    console.log('Active countries loaded:', {
-      total: activeCountries.length,
-      countries: activeCountries.map(c => c.name)
-    });
+  console.log('Active countries for motions:', {
+    total: activeCountries.length,
+    countries: activeCountries.map(c => ({ name: c.name, attendance: c.attendance }))
+  });
 
-    setPresentCountries(activeCountries);
-  }, [committee, onCancel]); // Include onCancel in dependencies
+  setPresentCountries(activeCountries);
+}, [committee, onCancel]);
 
   // Calculate division of time for moderated caucus
   const calculateTimeDivision = () => {
