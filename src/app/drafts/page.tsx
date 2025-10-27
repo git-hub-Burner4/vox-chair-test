@@ -61,9 +61,10 @@ const DRAFT_TYPES: DraftType[] = [
   { name: "Custom", color: "gray", icon: <FileTextIcon className="h-5 w-5" /> },
 ]
 
-const { committee } = useCommittee()
-
 export default function DraftsPage() {
+  
+  const { committee } = useCommittee()
+  
   const [drafts, setDrafts] = useState<Draft[]>([
   {
     id: crypto.randomUUID(),
