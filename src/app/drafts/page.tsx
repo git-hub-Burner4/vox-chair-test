@@ -33,7 +33,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { logDraftCreated, logDraftDeleted } from "@/lib/logging"
+import { useCommittee } from "@/lib/committee-context"
 import { toast } from "sonner"
+import jsPDF from 'jspdf'
 
 type Draft = {
   id: string
@@ -43,6 +45,8 @@ type Draft = {
   updatedAt: Date
   tags: string[]
   archived?: boolean
+  committeeId?: string
+  committeeName?: string
 }
 
 type DraftType = {
@@ -57,18 +61,22 @@ const DRAFT_TYPES: DraftType[] = [
   { name: "Custom", color: "gray", icon: <FileTextIcon className="h-5 w-5" /> },
 ]
 
+const { committee } = useCommittee()
+
 export default function DraftsPage() {
   const [drafts, setDrafts] = useState<Draft[]>([
-    {
-      id: crypto.randomUUID(),
-      title: "Lorem",
-      content: "# Example draft\n\nThis is a sample markdown draft.",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      tags: ["Crisis Note"],
-      archived: false,
-    }
-  ])
+  {
+    id: crypto.randomUUID(),
+    title: "Lorem",
+    content: "# Example draft\n\nThis is a sample markdown draft.",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tags: ["Crisis Note"],
+    archived: false,
+    committeeId: committee?.id,
+    committeeName: committee?.name,
+  }
+])
   const [searchQuery, setSearchQuery] = useState("")
   const [isNewDraftOpen, setIsNewDraftOpen] = useState(false)
   const [draftName, setDraftName] = useState("")
@@ -132,14 +140,16 @@ export default function DraftsPage() {
     }
 
     const newDraft: Draft = {
-      id: crypto.randomUUID(),
-      title: draftName,
-      content: "",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      tags: [selectedType],
-      archived: false,
-    }
+  id: crypto.randomUUID(),
+  title: draftName,
+  content: "",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  tags: [selectedType],
+  archived: false,
+  committeeId: committee?.id,
+  committeeName: committee?.name,
+}
 
     setDrafts([...drafts, newDraft])
     logDraftCreated(draftName, selectedType)
@@ -168,50 +178,48 @@ export default function DraftsPage() {
   }
 
   const handleDownloadPDF = (draft: Draft, e: React.MouseEvent) => {
-    e.stopPropagation()
+  e.stopPropagation()
+  
+  try {
+    const pdf = new jsPDF()
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 20
+    const maxWidth = pageWidth - (margin * 2)
+    let yPosition = margin
+
+    // Title
+    pdf.setFontSize(16)
+    pdf.setFont(undefined, 'bold')
+    pdf.text(draft.title, margin, yPosition)
+    yPosition += 10
+
+    // Date
+    pdf.setFontSize(10)
+    pdf.setFont(undefined, 'normal')
+    pdf.text(`Created: ${draft.createdAt.toLocaleDateString()}`, margin, yPosition)
+    yPosition += 15
+
+    // Content
+    pdf.setFontSize(12)
+    const lines = pdf.splitTextToSize(draft.content, maxWidth)
     
-    // Create a simple HTML document from the markdown content
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>${draft.title}</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              max-width: 800px;
-              margin: 40px auto;
-              padding: 20px;
-              line-height: 1.6;
-            }
-            h1, h2, h3 { color: #333; }
-            pre { background: #f4f4f4; padding: 10px; border-radius: 4px; }
-            code { background: #f4f4f4; padding: 2px 4px; border-radius: 2px; }
-          </style>
-        </head>
-        <body>
-          <h1>${draft.title}</h1>
-          <p><em>Created: ${draft.createdAt.toLocaleDateString()}</em></p>
-          <hr>
-          <pre>${draft.content}</pre>
-        </body>
-      </html>
-    `
-    
-    // Create a blob and download link
-    const blob = new Blob([htmlContent], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${draft.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
-    toast.success(`"${draft.title}" downloaded as HTML`)
+    lines.forEach((line: string) => {
+      if (yPosition > pageHeight - margin) {
+        pdf.addPage()
+        yPosition = margin
+      }
+      pdf.text(line, margin, yPosition)
+      yPosition += 7
+    })
+
+    pdf.save(`${draft.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`)
+    toast.success(`"${draft.title}" downloaded as PDF`)
+  } catch (error) {
+    console.error('PDF generation error:', error)
+    toast.error('Failed to generate PDF')
   }
+}
 
   const handleArchive = (draft: Draft, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -315,16 +323,26 @@ export default function DraftsPage() {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {draft.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className={getTagColor(tag)}>
-                        {tag}
-                      </Badge>
-                    ))}
-                    {draft.archived && (
-                      <Badge variant="outline" className="bg-gray-200 text-gray-700">
-                        Archived
-                      </Badge>
-                    )}
+  {draft.tags.map((tag) => (
+    <Badge key={tag} variant="outline" className={getTagColor(tag)}>
+      {tag}
+    </Badge>
+  ))}
+  {draft.archived && (
+    <Badge variant="outline" className="bg-gray-200 text-gray-700">
+      Archived
+    </Badge>
+  )}
+</div>
+{draft.committeeName && (
+  <div className="text-xs text-muted-foreground mt-1">
+    Committee: {draft.committeeName}
+  </div>
+)}
+<div className="flex items-center justify-between">
+  <div className="text-sm text-muted-foreground">
+    Created {draft.createdAt.toLocaleDateString()} at {draft.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+  </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
