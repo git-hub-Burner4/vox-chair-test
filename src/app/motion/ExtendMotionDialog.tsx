@@ -62,11 +62,6 @@ export const ExtendMotionDialog = ({
 
   // ADD CONSOLE LOGS HERE
   useEffect(() => {
-    console.log("=== ExtendMotionDialog Props ===");
-    console.log("enableVoting:", enableVoting);
-    console.log("open:", open);
-    console.log("step:", step);
-    console.log("originalMotion:", originalMotion);
   }, [enableVoting, open, step, originalMotion]);
 
   useEffect(() => {
@@ -85,9 +80,6 @@ export const ExtendMotionDialog = ({
         proposingCountry: countries[0]?.name || "",
       });
       setStep("config");
-      
-      console.log("=== ExtendMotionDialog Opened ===");
-      console.log("Reset to config step");
     }
   }, [open, originalMotion?.speakingTime, countries]);
 
@@ -114,14 +106,9 @@ export const ExtendMotionDialog = ({
       return;
     }
 
-    console.log("=== Config Submit ===");
-    console.log("enableVoting:", enableVoting);
-
     if (enableVoting) {
-      console.log("Moving to vote step");
       setStep("vote");
     } else {
-      console.log("Voting disabled, auto-passing motion");
       const additionalDurationInMinutes =
         formData.duration.minutes + formData.duration.seconds / 60;
       const newSpeakingTimeInSeconds = formData.useSameTimings
@@ -141,8 +128,6 @@ export const ExtendMotionDialog = ({
   };
 
   const handleVoteComplete = (passed: boolean) => {
-    console.log("=== Vote Complete ===");
-    console.log("Passed:", passed);
     
     const additionalDurationInMinutes =
       formData.duration.minutes + formData.duration.seconds / 60;
@@ -183,11 +168,6 @@ export const ExtendMotionDialog = ({
       return `${seconds} second${seconds !== 1 ? 's' : ''}`;
     }
   };
-
-  console.log("=== Render ExtendMotionDialog ===");
-  console.log("Current step:", step);
-  console.log("enableVoting:", enableVoting);
-  console.log("Should show voting buttons:", step === "vote" && enableVoting);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

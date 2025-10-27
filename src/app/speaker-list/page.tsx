@@ -601,13 +601,11 @@ export default function SessionPage() {
           return;
         }
 
-        console.log('Loading committee from URL:', committeeId);
         const { getCommitteeById } = await import('@/lib/supabase/committees');
         const fullCommittee = await getCommitteeById(committeeId);
         
         if (fullCommittee) {
           setCommittee(fullCommittee);
-          console.log('Committee loaded from URL:', fullCommittee);
         }
       } catch (error) {
         console.error('Error loading committee from URL:', error);
@@ -621,11 +619,8 @@ export default function SessionPage() {
 
   // Initialize members from committee data
   useEffect(() => {
-  console.log('=== Speaker List Page: Loading Members ===');
-  console.log('Committee:', committee);
   
   if (!committee?.countryList) {
-    console.log('No committee data found');
     setAllMembers([]);
     return;
   }
@@ -657,8 +652,6 @@ export default function SessionPage() {
   // Convert Map values to array and sort by name
   const members = Array.from(uniqueCountries.values())
     .sort((a, b) => a.name.localeCompare(b.name));
-  
-  console.log('Speaker List: Setting unique members:', members.length);
   setAllMembers(members);
 }, [committee]);
   
@@ -682,12 +675,6 @@ const [settingsLoaded, setSettingsLoaded] = useState(false);
   // Load committee settings and apply them
 useEffect(() => {
   if (committee?.settings && !settingsLoaded) {
-    console.log("=== Loading Committee Settings ===");
-    console.log("Full committee object:", committee);
-    console.log("Settings:", committee.settings);
-    console.log("enableMotions:", committee.settings.enableMotions);
-    console.log("enableVoting:", committee.settings.enableVoting);
-    console.log("showMotions:", committee.settings.showMotions);
     
     // Set default speaking time from committee settings
     const defaultTime = committee.settings.speakingTime || 120;
@@ -708,15 +695,6 @@ useEffect(() => {
     setShowSpeakerListDisplay(committee.settings.showSpeakerList ?? true);
     setShowMotionsDisplay(true);
     setShowMotionStatusBadges(committee.settings.showMotions ?? true);
-    
-    console.log('Applied committee settings:', {
-      speakingTime: defaultTime,
-      enableMotions: committee.settings.enableMotions,
-      enableVoting: committee.settings.enableVoting,
-      showTimer: committee.settings.showTimer,
-      showSpeakerList: committee.settings.showSpeakerList,
-      showMotions: committee.settings.showMotions
-    });
   }
 }, [committee?.settings, settingsLoaded, currentSpeaker, speakerQueue.length, isRunning]);
   
@@ -872,10 +850,6 @@ useEffect(() => {
   };
 
   const handleExtendMotion = (motion: Motion) => {
-  console.log('=== handleExtendMotion called ===');
-  console.log('Motion:', motion);
-  console.log('Motion status:', motion.status);
-  console.log('enableVoting setting:', committee?.settings?.enableVoting);
   
   if (!motion) {
     toast.error('Invalid motion to extend');
@@ -883,18 +857,15 @@ useEffect(() => {
   }
   
   if (motion.status !== "In Progress") {
-    console.log('Motion status check failed:', motion.status);
     toast.error(`Cannot extend: Motion must be in progress (current status: ${motion.status})`);
     return;
   }
 
   if (motion.type !== "Moderated Caucus" && motion.type !== "GSL") {
-    console.log('Motion type check failed:', motion.type);
     toast.error(`Cannot extend: Only Moderated Caucus and GSL can be extended`);
     return;
   }
   
-  console.log('Setting extend motion data to:', { open: true, motion });
   setExtendMotionData({ open: true, motion });
   toast.info(`Opening extension dialog for ${motion.type}`);
 };
@@ -1774,8 +1745,6 @@ useEffect(() => {
   <ExtendMotionDialog
     open={extendMotionData.open}
     onOpenChange={(open) => {
-      console.log("=== ExtendMotionDialog onOpenChange ===");
-      console.log("New open state:", open);
       setExtendMotionData(prev => ({ ...prev, open }));
     }}
     originalMotion={extendMotionData.motion}

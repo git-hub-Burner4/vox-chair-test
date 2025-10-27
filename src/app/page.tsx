@@ -33,9 +33,9 @@ import { useAuth } from "@/lib/auth-context"
 
 // Mock templates
 const templates = [
-  { id: 1, name: "UN Security Council", members: 15, description: "Standard UN Security Council setup" },
-  { id: 2, name: "Small Committee", members: 10, description: "For smaller discussion groups" },
-  { id: 3, name: "Large Assembly", members: 50, description: "For large-scale simulations" },
+  { id: 1, name: "UN Security Council", members: 15, description: "Standard UN Security Council setup", countries: ["United States of America", "United Kingdom", "France", "Russian Federation", "China", "Brazil", "Japan", "Germany", "India", "South Africa", "Nigeria", "Mexico", "Australia", "Saudi Arabia", "Turkey"] },
+  { id: 2, name: "Small Committee", members: 10, description: "For smaller discussion groups", countries: [] },
+  { id: 3, name: "Large Assembly", members: 50, description: "For large-scale simulations", countries: [] },
 ]
 
 export default function Page() {
@@ -90,7 +90,6 @@ export default function Page() {
     settings?: any
   }) => {
     try {
-      console.log('Setting up committee with data:', data);
       
       const savedCommittee = await saveCommitteeToDatabase(
         {
@@ -134,7 +133,6 @@ export default function Page() {
       };
 
       logSessionStart(`Committee prepared: ${data.name}`, data.countries.length);
-      console.log('Saving committee data:', committeeData);
 
       saveCommittee(committeeData);
       setCommittee(committeeData);
@@ -619,7 +617,19 @@ export default function Page() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {templates.map((template) => (
-              <Card key={template.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+  <Card 
+    key={template.id} 
+    className="hover:shadow-lg transition-shadow cursor-pointer"
+    onClick={() => {
+      if (template.countries.length > 0) {
+        // Pre-populate setup modal with template data
+        setSetupModalOpen(true)
+        // You'll need to add a way to pass template data to the modal
+      } else {
+        toast.info("This template is coming soon!")
+      }
+    }}
+  >
                 <CardHeader>
                   <CardTitle>{template.name}</CardTitle>
                   <CardDescription>{template.members} members</CardDescription>

@@ -58,10 +58,6 @@ export function SpeakerAttendance({
   const [availableSpeakers, setAvailableSpeakers] = useState<Speaker[]>([])
 
   useEffect(() => {
-  console.log('=== SpeakerAttendance: Loading Countries ===');
-  console.log('Committee:', committee);
-  console.log('CountryList:', committee?.countryList);
-  console.log('Countries:', committee?.countries);
   
   if (!committee) {
     console.warn('No committee available');
@@ -92,8 +88,6 @@ export function SpeakerAttendance({
       speakers.push(speaker);
     });
   }
-  
-  console.log('Processed speakers:', speakers);
   setAvailableSpeakers(speakers);
 }, [committee]);
 

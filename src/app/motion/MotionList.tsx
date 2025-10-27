@@ -44,11 +44,6 @@ export const MotionList = ({
   enableVoting = true
 }: MotionListProps) => {
 
-  console.log("=== MotionList Props ===");
-  console.log("showMotionStatus:", showMotionStatus);
-  console.log("enableVoting:", enableVoting);
-  console.log("Number of motions:", motions.length);
-
   const [filter, setFilter] = useState<MotionStatus | "All">("All");
   const [draggedMotion, setDraggedMotion] = useState<Motion | null>(null);
   const [dragOverMotionId, setDragOverMotionId] = useState<string | null>(null);
@@ -71,9 +66,6 @@ export const MotionList = ({
     filter === "All" ? sortedMotions : sortedMotions.filter((m) => m.status === filter);
 
   const handleVoteComplete = (voteData: { yes: number; no: number; abstain: number; passed: boolean }) => {
-    console.log("=== Vote Complete ===");
-    console.log("Vote data:", voteData);
-    console.log("Selected motion:", selectedMotion);
     
     if (!selectedMotion) return;
     
@@ -132,13 +124,6 @@ const handleMotionSubmit = (
   proposingCountry: string,
   passed: boolean
 ) => {
-  console.log("Motion Submit Handler Called:", {
-    motionId,
-    additionalDuration,
-    newSpeakingTime,
-    proposingCountry,
-    passed,
-  });
 
   if (!selectedMotion) return;
 
@@ -158,13 +143,10 @@ const handleVote = (votes: {
   abstain: number;
   passed: boolean;
 }) => {
-  console.log("Vote recorded:", votes);
   // Additional vote handling if needed
 };
 
 const handleAdjournMotion = (motionId: string) => {
-  console.log("=== Adjourn Motion ===");
-  console.log("Motion ID:", motionId);
   
   // Change motion status from "In Progress" to "Passed"
   onStatusChange(motionId, "Passed");
@@ -271,9 +253,6 @@ const handleAdjournMotion = (motionId: string) => {
                           <Button
                             size="sm"
                             onClick={() => {
-                              console.log("=== Vote button clicked ===");
-                              console.log("Motion:", motion);
-                              console.log("enableVoting:", enableVoting);
                               setSelectedMotion(motion);
                               setVotingDialogOpen(true);
                             }}

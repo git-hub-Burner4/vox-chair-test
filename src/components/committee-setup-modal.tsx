@@ -145,12 +145,8 @@ export default function CommitteeSetupModal({
   const router = useRouter()
 
   const filteredCountries = useMemo(() => {
-    console.log("=== FILTERING COUNTRIES ===");
-    console.log("Input:", countrySearchInput);
-    console.log("Country list length:", countryList.length);
     
     if (!countrySearchInput.trim()) {
-      console.log("No search input, returning all countries");
       return countryList;
     }
     
@@ -159,9 +155,6 @@ export default function CommitteeSetupModal({
       country.name.toLowerCase().includes(query) ||
       country.code.toLowerCase().includes(query)
     );
-    
-    console.log("Filtered results:", results.length);
-    console.log("First 3 results:", results.slice(0, 3).map(c => c.name));
     
     return results;
   }, [countrySearchInput]);
@@ -393,13 +386,11 @@ export default function CommitteeSetupModal({
                               value={countrySearchInput}
                               onChange={(e) => {
                                 const newValue = e.target.value;
-                                console.log("Input onChange:", newValue);
                                 setCountrySearchInput(newValue);
                                 setCountrySearchOpen(true);
                               }}
                               onFocus={() => setCountrySearchOpen(true)}
                               onKeyDown={(e) => {
-                                console.log("Key pressed:", e.key);
                                 if (e.key === 'Escape') {
                                   setCountrySearchOpen(false);
                                   setCountrySearchInput("");
@@ -439,7 +430,6 @@ export default function CommitteeSetupModal({
                                               type="button"
                                               onMouseDown={(e) => {
                                                 e.preventDefault();
-                                                console.log("Country button clicked:", country.name);
                                                 
                                                 if (!isAdded) {
                                                   const portfolio = {
@@ -452,7 +442,6 @@ export default function CommitteeSetupModal({
                                                     const newPortfolios = [...prev, portfolio];
                                                     return newPortfolios.sort((a, b) => a.name.localeCompare(b.name));
                                                   });
-                                                  console.log("Added country:", country.name);
                                                 }
                                               }}
                                               disabled={isAdded}

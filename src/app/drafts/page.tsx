@@ -64,20 +64,6 @@ const DRAFT_TYPES: DraftType[] = [
 export default function DraftsPage() {
 
   const { committee } = useCommittee()
-  
-  const [drafts, setDrafts] = useState<Draft[]>([
-  {
-    id: crypto.randomUUID(),
-    title: "Lorem",
-    content: "# Example draft\n\nThis is a sample markdown draft.",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: ["Crisis Note"],
-    archived: false,
-    committeeId: committee?.id,
-    committeeName: committee?.name,
-  }
-])
   const [searchQuery, setSearchQuery] = useState("")
   const [isNewDraftOpen, setIsNewDraftOpen] = useState(false)
   const [draftName, setDraftName] = useState("")
@@ -241,14 +227,13 @@ export default function DraftsPage() {
   }
 
   const handleCopyShareLink = () => {
-    if (draftToShare) {
-      // Create a shareable link (in a real app, this would be a proper URL)
-      const shareLink = `${window.location.origin}/drafts/${draftToShare.id}`
-      navigator.clipboard.writeText(shareLink)
-      toast.success("Link copied to clipboard")
-      setIsShareDialogOpen(false)
-    }
+  if (draftToShare) {
+    const shareLink = `${window.location.origin}/drafts?id=${draftToShare.id}`
+    navigator.clipboard.writeText(shareLink)
+    toast.success("Link copied to clipboard")
+    setIsShareDialogOpen(false)
   }
+}
 
   const archivedCount = drafts.filter(d => d.archived).length
 
@@ -301,21 +286,20 @@ export default function DraftsPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredDrafts.map((draft) => (
               <Card 
-                key={draft.id} 
-                className="p-6 hover:shadow-lg transition-shadow cursor-pointer relative group"
-                onMouseEnter={() => setHoveredDraft(draft.id)}
-                onMouseLeave={() => setHoveredDraft(null)}
-                onClick={() => {
-                  // Ensure we're setting fresh content to prevent duplicates
-                  const draftToOpen = drafts.find(d => d.id === draft.id)
-                  if (draftToOpen) {
-                    setLastEditedDraft(draftToOpen.id, draftToOpen.title)
-                    setEditorContent(draftToOpen.content)
-                    setIsSaved(true)
-                    open()
-                  }
-                }}
-              >
+  key={draft.id} 
+  className="p-6 hover:shadow-lg transition-shadow cursor-pointer relative group"
+  onMouseEnter={() => setHoveredDraft(draft.id)}
+  onMouseLeave={() => setHoveredDraft(null)}
+  onClick={() => {
+    const draftToOpen = drafts.find(d => d.id === draft.id)
+    if (draftToOpen) {
+      setLastEditedDraft(draftToOpen.id, draftToOpen.title)
+      setEditorContent(draftToOpen.content)
+      setIsSaved(true)
+      open()
+    }
+  }}
+>
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
                     <h3 className="font-semibold text-lg truncate flex-1">{draft.title}</h3>
@@ -478,10 +462,10 @@ export default function DraftsPage() {
               <Label>Share Link</Label>
               <div className="flex gap-2">
                 <Input
-                  readOnly
-                  value={draftToShare ? `${window.location.origin}/drafts/${draftToShare.id}` : ""}
-                  className="flex-1"
-                />
+  readOnly
+  value={draftToShare ? `${window.location.origin}/drafts?id=${draftToShare.id}` : ""}
+  className="flex-1"
+/>
                 <Button onClick={handleCopyShareLink}>
                   Copy
                 </Button>
