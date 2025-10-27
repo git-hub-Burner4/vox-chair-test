@@ -598,9 +598,6 @@ export default function Page() {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{committee.name}</span>
-          <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded">
-            {committee.abbrev}
-          </span>
         </CardTitle>
         <CardDescription>{committee.members} members</CardDescription>
       </CardHeader>
