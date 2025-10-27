@@ -62,7 +62,7 @@ const DRAFT_TYPES: DraftType[] = [
 ]
 
 export default function DraftsPage() {
-  
+
   const { committee } = useCommittee()
   
   const [drafts, setDrafts] = useState<Draft[]>([
@@ -346,9 +346,6 @@ export default function DraftsPage() {
   </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Created {draft.createdAt.toLocaleDateString()}
-                    </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="sm">
@@ -371,7 +368,7 @@ export default function DraftsPage() {
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => handleDownloadPDF(draft, e)}>
-                          Download as HTML
+                          Download as PDF
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => handleShare(draft, e)}>
                           Share
