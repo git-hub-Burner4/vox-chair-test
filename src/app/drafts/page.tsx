@@ -70,6 +70,7 @@ export default function DraftsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isNewDraftOpen, setIsNewDraftOpen] = useState(false)
   const [draftName, setDraftName] = useState("")
+  const [draftDescription, setDraftDescription] = useState("")
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const { 
@@ -132,7 +133,7 @@ export default function DraftsPage() {
     const newDraft: Draft = {
       id: crypto.randomUUID(),
       title: draftName,
-      description: "",
+      description: draftDescription.trim() || undefined,
       content: "",
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -146,6 +147,7 @@ export default function DraftsPage() {
     logDraftCreated(draftName, selectedType)
     setIsNewDraftOpen(false)
     setDraftName("")
+    setDraftDescription("")
     setSelectedType(null)
     toast.success(`Draft "${draftName}" created successfully`)
   }
@@ -410,6 +412,16 @@ export default function DraftsPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="draft-description">Description (Optional)</Label>
+              <Input
+                id="draft-description"
+                placeholder="Enter a brief description..."
+                value={draftDescription}
+                onChange={(e) => setDraftDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Draft Type</Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {DRAFT_TYPES.map((type) => (
@@ -442,6 +454,7 @@ export default function DraftsPage() {
               onClick={() => {
                 setIsNewDraftOpen(false)
                 setDraftName("")
+                setDraftDescription("")
                 setSelectedType(null)
               }}
             >
