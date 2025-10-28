@@ -130,17 +130,17 @@ export default function DraftsPage() {
     }
 
     const newDraft: Draft = {
-  id: crypto.randomUUID(),
-  title: draftName,
-  description: "",
-  content: "",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  tags: [selectedType],
-  archived: false,
-  committeeId: committee?.id,
-  committeeName: committee?.name,
-}
+      id: crypto.randomUUID(),
+      title: draftName,
+      description: "",
+      content: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tags: [selectedType],
+      archived: false,
+      committeeId: committee?.id,
+      committeeName: committee?.name,
+    }
 
     setDrafts([...drafts, newDraft])
     logDraftCreated(draftName, selectedType)
@@ -169,48 +169,48 @@ export default function DraftsPage() {
   }
 
   const handleDownloadPDF = (draft: Draft, e: React.MouseEvent) => {
-  e.stopPropagation()
-  
-  try {
-    const pdf = new jsPDF()
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const margin = 20
-    const maxWidth = pageWidth - (margin * 2)
-    let yPosition = margin
-
-    // Title
-    pdf.setFontSize(16)
-    pdf.setFont(undefined, 'bold')
-    pdf.text(draft.title, margin, yPosition)
-    yPosition += 10
-
-    // Date
-    pdf.setFontSize(10)
-    pdf.setFont(undefined, 'normal')
-    pdf.text(`Created: ${draft.createdAt.toLocaleDateString()}`, margin, yPosition)
-    yPosition += 15
-
-    // Content
-    pdf.setFontSize(12)
-    const lines = pdf.splitTextToSize(draft.content, maxWidth)
+    e.stopPropagation()
     
-    lines.forEach((line: string) => {
-      if (yPosition > pageHeight - margin) {
-        pdf.addPage()
-        yPosition = margin
-      }
-      pdf.text(line, margin, yPosition)
-      yPosition += 7
-    })
+    try {
+      const pdf = new jsPDF()
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 20
+      const maxWidth = pageWidth - (margin * 2)
+      let yPosition = margin
 
-    pdf.save(`${draft.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`)
-    toast.success(`"${draft.title}" downloaded as PDF`)
-  } catch (error) {
-    console.error('PDF generation error:', error)
-    toast.error('Failed to generate PDF')
+      // Title
+      pdf.setFontSize(16)
+      pdf.setFont(undefined, 'bold')
+      pdf.text(draft.title, margin, yPosition)
+      yPosition += 10
+
+      // Date
+      pdf.setFontSize(10)
+      pdf.setFont(undefined, 'normal')
+      pdf.text(`Created: ${draft.createdAt.toLocaleDateString()}`, margin, yPosition)
+      yPosition += 15
+
+      // Content
+      pdf.setFontSize(12)
+      const lines = pdf.splitTextToSize(draft.content, maxWidth)
+      
+      lines.forEach((line: string) => {
+        if (yPosition > pageHeight - margin) {
+          pdf.addPage()
+          yPosition = margin
+        }
+        pdf.text(line, margin, yPosition)
+        yPosition += 7
+      })
+
+      pdf.save(`${draft.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`)
+      toast.success(`"${draft.title}" downloaded as PDF`)
+    } catch (error) {
+      console.error('PDF generation error:', error)
+      toast.error('Failed to generate PDF')
+    }
   }
-}
 
   const handleArchive = (draft: Draft, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -233,7 +233,7 @@ export default function DraftsPage() {
   const handleCopyShareLink = async () => {
     if (draftToShare) {
       try {
-        const shareLink = `${window.location.origin}/drafts?id=${draftToShare.id}`
+        const shareLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/drafts?id=${draftToShare.id}`
         await navigator.clipboard.writeText(shareLink)
         toast.success("Link copied to clipboard")
         setIsShareDialogOpen(false)
@@ -295,72 +295,32 @@ export default function DraftsPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredDrafts.map((draft) => (
               <Card 
-  key={draft.id} 
-  className="p-6 hover:shadow-lg transition-shadow relative group"
-  onMouseEnter={() => setHoveredDraft(draft.id)}
-  onMouseLeave={() => setHoveredDraft(null)}
-  onClick={() => {
-    const draftToOpen = drafts.find(d => d.id === draft.id)
-    if (draftToOpen) {
-      setLastEditedDraft(draftToOpen.id, draftToOpen.title)
-      setEditorContent(draftToOpen.content)
-      setIsSaved(true)
-      open()
-    }
-  }}
->
+                key={draft.id} 
+                className="p-6 hover:shadow-lg transition-shadow relative group cursor-pointer"
+                onMouseEnter={() => setHoveredDraft(draft.id)}
+                onMouseLeave={() => setHoveredDraft(null)}
+                onClick={() => {
+                  const draftToOpen = drafts.find(d => d.id === draft.id)
+                  if (draftToOpen) {
+                    setLastEditedDraft(draftToOpen.id, draftToOpen.title)
+                    setEditorContent(draftToOpen.content)
+                    setIsSaved(true)
+                    open()
+                  }
+                }}
+              >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
-  <h3 
-    className="font-semibold text-lg truncate flex-1 cursor-pointer"
-    onClick={() => {
-      const draftToOpen = drafts.find(d => d.id === draft.id)
-      if (draftToOpen) {
-        setLastEditedDraft(draftToOpen.id, draftToOpen.title)
-        setEditorContent(draftToOpen.content)
-        setIsSaved(true)
-        open()
-      }
-    }}
-  >
-    {draft.title}
-  </h3>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-  {draft.tags.map((tag) => (
-    <Badge key={tag} variant="outline" className={getTagColor(tag)}>
-      {tag}
-    </Badge>
-  ))}
-  {draft.archived && (
-    <Badge variant="outline" className="bg-gray-200 text-gray-700">
-      Archived
-    </Badge>
-  )}
-</div>
-{draft.committeeName && (
-  <div className="text-xs text-muted-foreground mt-1">
-    Committee: {draft.committeeName}
-  </div>
-)}
-{draft.description && (
-  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-    {draft.description}
-  </p>
-)}
-<div className="flex items-center justify-between">
-  <div className="text-sm text-muted-foreground">
-    Created {draft.createdAt.toLocaleDateString()} at {draft.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-  </div>
-                  </div>
-                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-lg truncate flex-1 pr-2">
+                      {draft.title}
+                    </h3>
                     <DropdownMenu>
-    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-        <DotsHorizontalIcon className="h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
+                          <DotsHorizontalIcon className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation()
@@ -396,6 +356,31 @@ export default function DraftsPage() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {draft.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className={getTagColor(tag)}>
+                        {tag}
+                      </Badge>
+                    ))}
+                    {draft.archived && (
+                      <Badge variant="outline" className="bg-gray-200 text-gray-700">
+                        Archived
+                      </Badge>
+                    )}
+                  </div>
+                  {draft.committeeName && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Committee: {draft.committeeName}
+                    </div>
+                  )}
+                  {draft.description && (
+                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                      {draft.description}
+                    </p>
+                  )}
+                  <div className="text-sm text-muted-foreground">
+                    Created {draft.createdAt.toLocaleDateString()} at {draft.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </Card>
@@ -486,10 +471,11 @@ export default function DraftsPage() {
               <Label>Share Link</Label>
               <div className="flex gap-2">
                 <Input
-  readOnly
-  value={draftToShare ? `${window.location.origin}/drafts?id=${draftToShare.id}` : ""}
-  className="flex-1"
-/>
+                  readOnly
+                  value={draftToShare && typeof window !== 'undefined' ? `${window.location.origin}/drafts?id=${draftToShare.id}` : ""}
+                  className="flex-1"
+                  onClick={(e) => e.currentTarget.select()}
+                />
                 <Button onClick={handleCopyShareLink}>
                   Copy
                 </Button>
